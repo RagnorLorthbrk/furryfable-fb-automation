@@ -3,7 +3,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function generatePosts(history, blog) {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+
+  // Use modern supported model
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash"
+  });
 
   // Get last 30 used topics to avoid repetition
   const usedTopics = history
@@ -61,19 +65,19 @@ Format exactly like this:
 ]
 `;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
-
-  const cleaned = text
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
-
   try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+
+    const cleaned = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
     return JSON.parse(cleaned);
+
   } catch (error) {
-    console.error("❌ Gemini returned invalid JSON:");
-    console.error(cleaned);
-    throw new Error("Invalid JSON from Gemini");
+    console.error("❌ Gemini API error:", error.message);
+    throw error;
   }
 }
