@@ -1,0 +1,2 @@
+npm init -y
+npm install axios dotenv googleapis openai @google/generative-ai sharp uuid
