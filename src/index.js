@@ -6,6 +6,7 @@ import { generatePosts } from "./generateContent.js";
 import { generateImage } from "./generateImage.js";
 import { postToFacebook } from "./postToFacebook.js";
 import { getLatestBlog } from "./blogFetcher.js";
+import axios from "axios";
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -19,8 +20,8 @@ async function run() {
   if (blog) {
     const blogExists = history.some(row => row.includes(blog.link));
     if (blogExists) {
-      console.log("⏭️ Blog already posted previously. Skipping blog-based content.");
-      blog = null; // Set to null so generatePosts only makes 2 general posts
+      console.log("⏭️ Blog already posted previously. Skipping blog content.");
+      blog = null; 
     }
   }
 
@@ -30,34 +31,34 @@ async function run() {
     const { imagePath, provider } = await generateImage(post);
     const fullCaption = post.caption + "\n\n" + post.hashtags;
 
+    // 1. Post to Facebook
     const fbPostId = await postToFacebook(fullCaption, imagePath);
     console.log(`✅ Post live: ${fbPostId}`);
 
-    // 🕒 Rate Limit Protection (3-second delay)
+    // 2. Add Engagement Comment
+    try {
+      const commentUrl = `https://graph.facebook.com/v24.0/${fbPostId}/comments`;
+      await axios.post(commentUrl, {
+        message: "Be honest… Who was the last one you said goodbye to before leaving home today? Your pet’s name + emoji. Let’s fill this with them. (Example: “Leo 🐶”)",
+        access_token: process.env.FB_PAGE_ACCESS_TOKEN
+      });
+      console.log("💬 Engagement comment added.");
+    } catch (e) {
+      console.warn("⚠️ Comment failed, but post is live.");
+    }
+
+    // 🕒 Rate Limit Protection
     await wait(3000);
 
+    // 3. Log to Sheets
     await appendRow({
       date: new Date().toISOString(),
       topic: post.topic,
-      angle: post.angle,
-      postType: post.postType,
-      breed: post.breed,
-      furColor: post.furColor,
       caption: post.caption,
-      hashtags: post.hashtags,
-      altText: post.altText,
-      imagePrompt: post.imagePrompt,
-      imageProvider: provider,
       fbPostId,
-      blogUrl: blog ? blog.link : "N/A", // Log the URL for future checks
-      similarityScore: 0
+      blogUrl: blog ? blog.link : "N/A"
     });
   }
-
-  console.log("✅ Automation complete");
 }
 
-run().catch(err => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+run().catch(console.error);
