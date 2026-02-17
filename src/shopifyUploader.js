@@ -2,10 +2,9 @@ import axios from "axios";
 import fs from "fs";
 
 /**
- * Automatically fetches a fresh 24-hour token (2026 Shopify Update)
+ * Fetches a fresh 24-hour token using Client Credentials (2026 Shopify Update)
  */
 async function getFreshToken() {
-  // Cleans handle to ensure no extra dots or spaces
   const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
   
   try {
@@ -20,12 +19,12 @@ async function getFreshToken() {
     return response.data.access_token;
   } catch (error) {
     console.error(`❌ Shopify Auth Failed:`, error.response?.data || error.message);
-    throw new Error("Check SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET in GitHub Secrets.");
+    throw new Error("Verify your Client ID/Secret in GitHub Secrets.");
   }
 }
 
 /**
- * Uploads image to Shopify and returns a public URL for Instagram
+ * Uploads image to Shopify and returns a CLEAN public URL for Instagram
  */
 export async function getShopifyImageUrl(imagePath) {
   const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
@@ -54,9 +53,16 @@ export async function getShopifyImageUrl(imagePath) {
       { headers: { "X-Shopify-Access-Token": token } }
     );
 
-    const url = response.data.data.fileCreate.files[0]?.image?.url;
-    if (url) console.log("🛍️ Shopify Public URL generated.");
-    return url;
+    const rawUrl = response.data.data.fileCreate.files[0]?.image?.url;
+    
+    // FIX: Strip URL parameters so Instagram doesn't reject it
+    if (rawUrl) {
+      const cleanUrl = rawUrl.split('?')[0]; 
+      console.log("📸 Shopify URL Ready (Cleaned):", cleanUrl);
+      return cleanUrl;
+    }
+    
+    return null;
   } catch (error) {
     console.error("🛍️ Shopify Upload Error:", error.message);
     return null;
