@@ -2,37 +2,34 @@ import axios from "axios";
 import fs from "fs";
 
 /**
- * Automatically fetches a fresh 24-hour token using Client Credentials
+ * Fetches a fresh 24-hour token using Client Credentials (2026 Shopify Update)
  */
 async function getFreshToken() {
   const shop = process.env.SHOPIFY_STORE_NAME;
-  const clientId = process.env.SHOPIFY_CLIENT_ID;
-  const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
-
   try {
     const response = await axios.post(
       `https://${shop}.myshopify.com/admin/oauth/access_token`,
       {
         grant_type: "client_credentials",
-        client_id: clientId,
-        client_secret: clientSecret,
+        client_id: process.env.SHOPIFY_CLIENT_ID,
+        client_secret: process.env.SHOPIFY_CLIENT_SECRET,
       }
     );
     return response.data.access_token;
   } catch (error) {
-    console.error("❌ Token Refresh Failed:", error.response?.data || error.message);
-    throw new Error("Could not authenticate with Shopify");
+    console.error("❌ Shopify Auth Failed:", error.response?.data || error.message);
+    throw new Error("Could not refresh Shopify token");
   }
 }
 
 /**
- * Uploads local image to Shopify to get a public URL for Instagram
+ * Uploads local image to Shopify and returns a public URL
  */
 export async function getShopifyImageUrl(imagePath) {
-  const imageData = fs.readFileSync(imagePath, { encoding: "base64" });
-  const token = await getFreshToken();
-
   try {
+    const token = await getFreshToken();
+    const imageData = fs.readFileSync(imagePath, { encoding: "base64" });
+
     const response = await axios.post(
       `https://${process.env.SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2025-01/graphql.json`,
       {
@@ -44,7 +41,7 @@ export async function getShopifyImageUrl(imagePath) {
         }`,
         variables: {
           files: [{
-            alt: "FurryFable Social Content",
+            alt: "FurryFable Social Post",
             contentType: "IMAGE",
             originalSource: `data:image/jpeg;base64,${imageData}`
           }]
@@ -53,9 +50,7 @@ export async function getShopifyImageUrl(imagePath) {
       { headers: { "X-Shopify-Access-Token": token } }
     );
 
-    const url = response.data.data.fileCreate.files[0]?.image?.url;
-    console.log("🛍️ Shopify Public URL:", url);
-    return url;
+    return response.data.data.fileCreate.files[0]?.image?.url;
   } catch (error) {
     console.error("🛍️ Shopify Upload Error:", error.message);
     return null;
