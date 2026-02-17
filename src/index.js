@@ -9,43 +9,49 @@ import { getShopifyImageUrl } from "./shopifyUploader.js";
 import { getLatestBlog } from "./blogFetcher.js";
 
 async function run() {
-  console.log("🚀 Automation started");
+  console.log("🚀 Starting FurryFable Automation");
+  
+  // 1. Get complete history from Google Sheets
   const history = await getSheetRows();
   let blog = await getLatestBlog();
 
-  if (blog && history.some(row => row.includes(blog.link))) {
-    console.log("⏭️ Blog already shared. Switching to general content.");
-    blog = null;
+  // 2. CHECK ENTIRE HISTORY FOR BLOG URL
+  if (blog) {
+    const alreadyPosted = history.some(row => row.some(cell => String(cell).includes(blog.link)));
+    if (alreadyPosted) {
+      console.log(`⏭️ Blog "${blog.title}" already exists in history. Skipping.`);
+      blog = null; // Forces AI to generate 3 unique general posts instead
+    }
   }
 
   const posts = await generatePosts(history, blog);
 
   for (const post of posts) {
     const { imagePath, provider } = await generateImage(post);
-    const fullCaption = post.caption + "\n\n" + post.hashtags;
+    const fullCaption = `${post.caption}\n\n${post.hashtags}`;
 
-    // 1. Get Public URL via Shopify
+    // A. Shopify Upload (Public URL for Instagram)
     const publicUrl = await getShopifyImageUrl(imagePath);
 
-    // 2. Post to Facebook
+    // B. Facebook Post
     const fbPostId = await postToFacebook(fullCaption, imagePath);
-    console.log(`✅ FB: ${fbPostId}`);
+    console.log(`✅ FB Live: ${fbPostId}`);
 
-    // 3. Post to Instagram
-    if (publicUrl && process.env.IG_USER_ID) {
+    // C. Instagram Post (Using verified ID: 17841473502150668)
+    if (publicUrl) {
       const igId = await postToInstagram(fullCaption, publicUrl);
-      console.log(`📸 IG: ${igId}`);
+      console.log(`📸 IG Live: ${igId}`);
     }
 
-    // 4. Post Dynamic Comment to FB
+    // D. Facebook Engagement Comment
     try {
       await axios.post(`https://graph.facebook.com/v24.0/${fbPostId}/comments`, {
         message: post.engagementComment,
         access_token: process.env.FB_PAGE_ACCESS_TOKEN
       });
-    } catch (e) { console.warn("⚠️ FB Comment failed"); }
+    } catch (e) { console.warn("⚠️ Comment failed"); }
 
-    // 5. Log to Sheets (13 Columns)
+    // E. Log 13 Columns to Sheets
     await appendRow({
       date: new Date().toISOString(),
       ...post,
@@ -54,9 +60,9 @@ async function run() {
       similarityScore: 0
     });
 
-    await new Promise(r => setTimeout(r, 5000)); // Delay between posts
+    await new Promise(r => setTimeout(r, 10000)); // 10s delay to prevent spam flags
   }
-  console.log("✅ Automation finished");
+  console.log("✅ All tasks complete!");
 }
 
 run().catch(err => { console.error(err); process.exit(1); });
