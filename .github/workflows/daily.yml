@@ -1,12 +1,14 @@
 name: FurryFable Automation
 
 on:
-  workflow_dispatch:
+  schedule:
+    # Runs at 3 AM, 9 AM, and 3 PM UTC every day
+    - cron: "0 3,9,15 * * *"
+  workflow_dispatch: # Keeps manual button just in case
 
 jobs:
   run:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
