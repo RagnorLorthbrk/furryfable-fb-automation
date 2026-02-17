@@ -5,30 +5,25 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 export async function generatePosts(history, blog) {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const usedTopics = history.slice(-30).map(row => row[1]).filter(Boolean).join(", ");
-  const blogInfo = blog ? `Latest blog: ${blog.title}\nURL: ${blog.link}` : "No blog today.";
+  // Use the entire history to check for duplicates, not just the last row
+  const allUsedCaptions = history.map(row => row[6]).join(" ");
+  const blogContext = blog 
+    ? `NEW BLOG DETECTED: "${blog.title}". URL: ${blog.link}. One post MUST be about this and include the full URL.` 
+    : "No new blog today. Focus on general pet care and storytelling.";
 
   const prompt = `
-Create 3 premium social media posts for FurryFable.
-Tone: Calm, storytelling, premium.
+Create 3 distinct social media posts for FurryFable.
+${blogContext}
 
-Avoid these topics: ${usedTopics}
-${blogInfo}
+STRICT VARIETY RULES:
+1. Post 1: Educational/Informative (Expert tone).
+2. Post 2: Emotional Storytelling (Warm, personal tone).
+3. Post 3: Short & Punchy (High energy).
+4. Do NOT use the same opening hook twice.
+5. If a blog is provided, include the URL "${blog ? blog.link : ''}" naturally in the caption.
 
-Rules:
-1. If blog exists, make 1 post about it.
-2. Create 2 additional unique pet posts.
-3. For EACH post, generate a unique "engagementComment" (a fun question to encourage replies).
-4. Return ONLY a valid JSON array.
-
-Format:
-[
-  {
-    "topic": "", "angle": "", "postType": "", "breed": "", "furColor": "",
-    "caption": "", "hashtags": "", "altText": "", "imagePrompt": "",
-    "engagementComment": ""
-  }
-]`;
+Return ONLY a JSON array: [{topic, angle, postType, breed, furColor, caption, hashtags, altText, imagePrompt, engagementComment}]
+`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().replace(/```json|```/g, "").trim();
