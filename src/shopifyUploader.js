@@ -3,6 +3,7 @@ import fs from "fs";
 
 async function getFreshToken() {
   try {
+    // Correct 2026 POST request for token exchange
     const response = await axios.post(
       `https://${process.env.SHOPIFY_STORE_NAME}.myshopify.com/admin/oauth/access_token`,
       {
@@ -13,7 +14,7 @@ async function getFreshToken() {
     );
     return response.data.access_token;
   } catch (error) {
-    console.error("❌ Shopify Auth Failed. Check your Client ID/Secret.");
+    console.error("❌ Shopify Auth Failed. Check your Client ID/Secret in GitHub Secrets.");
     throw error;
   }
 }
@@ -33,7 +34,7 @@ export async function getShopifyImageUrl(imagePath) {
         }`,
         variables: {
           files: [{
-            alt: "FurryFable Content",
+            alt: "FurryFable Social Content",
             contentType: "IMAGE",
             originalSource: `data:image/jpeg;base64,${imageData}`
           }]
@@ -42,11 +43,9 @@ export async function getShopifyImageUrl(imagePath) {
       { headers: { "X-Shopify-Access-Token": token } }
     );
 
-    const url = response.data.data.fileCreate.files[0]?.image?.url;
-    console.log("🛍️ Shopify Image Ready:", url);
-    return url;
+    return response.data.data.fileCreate.files[0]?.image?.url;
   } catch (error) {
-    console.error("🛍️ Shopify Upload Failed.");
+    console.error("🛍️ Shopify Upload Failed:", error.message);
     return null;
   }
 }
