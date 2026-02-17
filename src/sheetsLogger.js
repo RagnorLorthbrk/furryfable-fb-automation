@@ -14,12 +14,10 @@ function getAuth() {
 export async function getSheetRows() {
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
-
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A2:M1000`, // Fetches up to column M
+    range: `${SHEET_NAME}!A2:M1000`,
   });
-
   return response.data.values || [];
 }
 
@@ -29,27 +27,16 @@ export async function appendRow(rowData) {
 
   // EXACT ORDER: Date, Topic, Angle, Post Type, Breed, Fur Color, Caption, Hashtags, Alt Text, Image Prompt, Image Provider, FB Post ID, Similarity Score
   const row = [
-    rowData.date || new Date().toISOString(),
-    rowData.topic || "",
-    rowData.angle || "",
-    rowData.postType || "",
-    rowData.breed || "",
-    rowData.furColor || "",
-    rowData.caption || "",
-    rowData.hashtags || "",
-    rowData.altText || "",
-    rowData.imagePrompt || "",
-    rowData.imageProvider || "",
-    rowData.fbPostId || "",
-    rowData.similarityScore || 0,
+    rowData.date, rowData.topic, rowData.angle, rowData.postType,
+    rowData.breed, rowData.furColor, rowData.caption, rowData.hashtags,
+    rowData.altText, rowData.imagePrompt, rowData.imageProvider,
+    rowData.fbPostId, rowData.similarityScore
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A:M`, // Append to a 13-column range
+    range: `${SHEET_NAME}!A:M`,
     valueInputOption: "USER_ENTERED",
-    requestBody: {
-      values: [row],
-    },
+    requestBody: { values: [row] },
   });
 }
