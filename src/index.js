@@ -4,19 +4,17 @@ import axios from "axios";
 import { getSheetRows, appendRow } from "./sheetsLogger.js";
 import { generatePosts } from "./generateContent.js";
 import { generateImage } from "./generateImage.js";
-import { postToFacebook } from "./postToFacebook.js";
+import { postToFacebook, postToInstagram } from "./postToFacebook.js";
+import { getShopifyImageUrl } from "./shopifyUploader.js";
 import { getLatestBlog } from "./blogFetcher.js";
-
-const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function run() {
   console.log("🚀 Automation started");
   const history = await getSheetRows();
   let blog = await getLatestBlog();
 
-  // Duplicate Check
   if (blog && history.some(row => row.includes(blog.link))) {
-    console.log("⏭️ Blog already shared. Using general content.");
+    console.log("⏭️ Blog already shared. Switching to general content.");
     blog = null;
   }
 
@@ -26,33 +24,39 @@ async function run() {
     const { imagePath, provider } = await generateImage(post);
     const fullCaption = post.caption + "\n\n" + post.hashtags;
 
-    // 1. Post to Facebook
-    const fbPostId = await postToFacebook(fullCaption, imagePath);
-    console.log(`✅ FB Post: ${fbPostId}`);
+    // 1. Get Public URL via Shopify
+    const publicUrl = await getShopifyImageUrl(imagePath);
 
-    // 2. Add Dynamic Comment to FB
+    // 2. Post to Facebook
+    const fbPostId = await postToFacebook(fullCaption, imagePath);
+    console.log(`✅ FB: ${fbPostId}`);
+
+    // 3. Post to Instagram
+    if (publicUrl && process.env.IG_USER_ID) {
+      const igId = await postToInstagram(fullCaption, publicUrl);
+      console.log(`📸 IG: ${igId}`);
+    }
+
+    // 4. Post Dynamic Comment to FB
     try {
       await axios.post(`https://graph.facebook.com/v24.0/${fbPostId}/comments`, {
         message: post.engagementComment,
         access_token: process.env.FB_PAGE_ACCESS_TOKEN
       });
-      console.log("💬 FB Comment added.");
     } catch (e) { console.warn("⚠️ FB Comment failed"); }
 
-    // 3. Optional: Instagram Logic (Requires IG_USER_ID secret)
-    // Note: IG API needs a public URL for the image
-    
-    await wait(5000); // Wait 5 seconds between posts
-
-    // 4. Log to Sheets (Fixed Mapping)
+    // 5. Log to Sheets (13 Columns)
     await appendRow({
       date: new Date().toISOString(),
       ...post,
       imageProvider: provider,
-      fbPostId: fbPostId,
+      fbPostId,
       similarityScore: 0
     });
+
+    await new Promise(r => setTimeout(r, 5000)); // Delay between posts
   }
+  console.log("✅ Automation finished");
 }
 
 run().catch(err => { console.error(err); process.exit(1); });
