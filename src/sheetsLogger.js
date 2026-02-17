@@ -1,7 +1,6 @@
-
 import { google } from "googleapis";
 
-const SHEET_NAME = "Sheet1"; // change if your sheet tab name is different
+const SHEET_NAME = "Sheet1";
 
 function getAuth() {
   return new google.auth.JWT(
@@ -24,24 +23,24 @@ export async function getSheetRows() {
   return response.data.values || [];
 }
 
-export async function appendRow(data) {
+export async function appendRow(rowData) {
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
 
   const row = [
-    data.date,
-    data.topic,
-    data.angle,
-    data.postType,
-    data.breed,
-    data.furColor,
-    data.caption,
-    data.hashtags,
-    data.altText,
-    data.imagePrompt,
-    data.imageProvider,
-    data.fbPostId,
-    data.similarityScore,
+    rowData.date,
+    rowData.topic,
+    rowData.angle,
+    rowData.postType,
+    rowData.breed,
+    rowData.furColor,
+    rowData.caption,
+    rowData.hashtags,
+    rowData.altText,
+    rowData.imagePrompt,
+    rowData.imageProvider,
+    rowData.fbPostId,
+    rowData.similarityScore,
   ];
 
   await sheets.spreadsheets.values.append({
