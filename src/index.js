@@ -1,37 +1,51 @@
-
 import dotenv from "dotenv";
 dotenv.config();
 
-import { appendRow, getSheetRows } from "./sheetsLogger.js";
+import { getSheetRows, appendRow } from "./sheetsLogger.js";
+import { generatePosts } from "./generateContent.js";
+import { generateImage } from "./generateImage.js";
+import { postToFacebook } from "./postToFacebook.js";
+import { getLatestBlog } from "./blogFetcher.js";
 
 async function run() {
-  console.log("Reading sheet...");
+  console.log("🚀 Automation started");
 
-  const rows = await getSheetRows();
-  console.log("Existing rows:", rows.length);
+  const history = await getSheetRows();
+  console.log("Existing rows:", history.length);
 
-  console.log("Adding test row...");
+  const blog = await getLatestBlog();
+  console.log("Latest blog:", blog?.title || "None found");
 
-  await appendRow({
-    date: new Date().toISOString(),
-    topic: "Automation Test",
-    angle: "Initial Setup",
-    postType: "System Test",
-    breed: "Test Breed",
-    furColor: "Test Color",
-    caption: "This is a test post from GitHub Actions.",
-    hashtags: "#test",
-    altText: "Test alt text",
-    imagePrompt: "Test prompt",
-    imageProvider: "System",
-    fbPostId: "N/A",
-    similarityScore: 0
-  });
+  const posts = await generatePosts(history, blog);
 
-  console.log("Row added successfully.");
+  for (const post of posts) {
+    const { imagePath, provider } = await generateImage(post);
+
+    const fullCaption = post.caption + "\n\n" + post.hashtags;
+
+    const fbPostId = await postToFacebook(fullCaption, imagePath);
+
+    await appendRow({
+      date: new Date().toISOString(),
+      topic: post.topic,
+      angle: post.angle,
+      postType: post.postType,
+      breed: post.breed,
+      furColor: post.furColor,
+      caption: post.caption,
+      hashtags: post.hashtags,
+      altText: post.altText,
+      imagePrompt: post.imagePrompt,
+      imageProvider: provider,
+      fbPostId,
+      similarityScore: 0
+    });
+  }
+
+  console.log("✅ Automation complete");
 }
 
 run().catch(err => {
-  console.error("Error:", err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });
