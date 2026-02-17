@@ -1,64 +1,42 @@
 import dotenv from "dotenv";
 dotenv.config();
-
+import axios from "axios";
 import { getSheetRows, appendRow } from "./sheetsLogger.js";
 import { generatePosts } from "./generateContent.js";
 import { generateImage } from "./generateImage.js";
 import { postToFacebook } from "./postToFacebook.js";
 import { getLatestBlog } from "./blogFetcher.js";
-import axios from "axios";
-
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function run() {
   console.log("🚀 Automation started");
-
   const history = await getSheetRows();
-  let blog = await getLatestBlog();
-
-  // 🛡️ Duplicate Blog Protection
-  if (blog) {
-    const blogExists = history.some(row => row.includes(blog.link));
-    if (blogExists) {
-      console.log("⏭️ Blog already posted previously. Skipping blog content.");
-      blog = null; 
-    }
-  }
-
+  const blog = await getLatestBlog();
   const posts = await generatePosts(history, blog);
 
   for (const post of posts) {
     const { imagePath, provider } = await generateImage(post);
-    const fullCaption = post.caption + "\n\n" + post.hashtags;
+    const fbPostId = await postToFacebook(post.caption + "\n\n" + post.hashtags, imagePath);
 
-    // 1. Post to Facebook
-    const fbPostId = await postToFacebook(fullCaption, imagePath);
-    console.log(`✅ Post live: ${fbPostId}`);
-
-    // 2. Add Engagement Comment
+    // Post the dynamic AI-generated comment
     try {
-      const commentUrl = `https://graph.facebook.com/v24.0/${fbPostId}/comments`;
-      await axios.post(commentUrl, {
-        message: "Be honest… Who was the last one you said goodbye to before leaving home today? Your pet’s name + emoji. Let’s fill this with them. (Example: “Leo 🐶”)",
+      await axios.post(`https://graph.facebook.com/v24.0/${fbPostId}/comments`, {
+        message: post.engagementComment,
         access_token: process.env.FB_PAGE_ACCESS_TOKEN
       });
-      console.log("💬 Engagement comment added.");
-    } catch (e) {
-      console.warn("⚠️ Comment failed, but post is live.");
-    }
+      console.log("💬 Dynamic comment posted.");
+    } catch (e) { console.warn("⚠️ Comment failed."); }
 
-    // 🕒 Rate Limit Protection
-    await wait(3000);
-
-    // 3. Log to Sheets
     await appendRow({
       date: new Date().toISOString(),
-      topic: post.topic,
-      caption: post.caption,
+      ...post,
+      imageProvider: provider,
       fbPostId,
-      blogUrl: blog ? blog.link : "N/A"
+      similarityScore: 0
     });
+    
+    await new Promise(r => setTimeout(r, 3000)); // Rate limit protection
   }
+  console.log("✅ Automation complete");
 }
 
-run().catch(console.error);
+run().catch(err => { console.error(err); process.exit(1); });
