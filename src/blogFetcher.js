@@ -3,19 +3,24 @@ import xml2js from "xml2js";
 
 export async function getLatestBlog() {
   try {
-    const response = await axios.get("https://furryfable.com/feed");
+    const response = await axios.get("https://www.furryfable.com/blogs/blog.atom");
+
     const parsed = await xml2js.parseStringPromise(response.data);
 
-    const item = parsed.rss.channel[0].item[0];
+    const entry = parsed.feed.entry[0];
+
+    const title = entry.title[0];
+    const link = entry.link.find(l => l.$.rel === "alternate").$.href;
+    const summary = entry.summary ? entry.summary[0]._ || entry.summary[0] : "";
 
     return {
-      title: item.title[0],
-      link: item.link[0],
-      description: item.description[0]
+      title,
+      link,
+      description: summary
     };
 
   } catch (error) {
-    console.log("No blog found or RSS error.");
+    console.log("Blog fetch error:", error.message);
     return null;
   }
 }
