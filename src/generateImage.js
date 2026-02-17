@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -28,7 +27,7 @@ No watermark.
   const fileName = `${uuidv4()}.png`;
   const filePath = path.join("/tmp", fileName);
 
-  // TRY OPENAI FIRST
+  // 1️⃣ TRY OPENAI FIRST
   try {
     console.log("🖼 Trying OpenAI image generation...");
 
@@ -43,13 +42,14 @@ No watermark.
 
     return { imagePath: filePath, provider: "OpenAI" };
 
-  } catch (error) {
+  } catch (openaiError) {
+
     console.log("⚠️ OpenAI failed. Switching to Gemini...");
 
-    // GEMINI FALLBACK
     try {
+      // 🔥 IMPORTANT: Use -exp model
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash"
+        model: "gemini-2.0-flash-exp"
       });
 
       const result = await model.generateContent({
@@ -74,7 +74,7 @@ No watermark.
       return { imagePath: filePath, provider: "Gemini" };
 
     } catch (geminiError) {
-      console.error("❌ Gemini image generation also failed.");
+      console.error("❌ Gemini image generation failed:", geminiError.message);
       throw geminiError;
     }
   }
