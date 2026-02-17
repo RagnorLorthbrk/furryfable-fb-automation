@@ -1,14 +1,10 @@
 import axios from "axios";
 import fs from "fs";
 
-/**
- * Fetches a fresh 24-hour token using Client Credentials (2026 Shopify Update)
- */
 async function getFreshToken() {
-  const shop = process.env.SHOPIFY_STORE_NAME;
   try {
     const response = await axios.post(
-      `https://${shop}.myshopify.com/admin/oauth/access_token`,
+      `https://${process.env.SHOPIFY_STORE_NAME}.myshopify.com/admin/oauth/access_token`,
       {
         grant_type: "client_credentials",
         client_id: process.env.SHOPIFY_CLIENT_ID,
@@ -18,13 +14,10 @@ async function getFreshToken() {
     return response.data.access_token;
   } catch (error) {
     console.error("❌ Shopify Auth Failed:", error.response?.data || error.message);
-    throw new Error("Could not refresh Shopify token");
+    throw new Error("Check Shopify Client ID/Secret in GitHub Secrets.");
   }
 }
 
-/**
- * Uploads local image to Shopify and returns a public URL
- */
 export async function getShopifyImageUrl(imagePath) {
   try {
     const token = await getFreshToken();
@@ -36,12 +29,11 @@ export async function getShopifyImageUrl(imagePath) {
         query: `mutation fileCreate($files: [FileCreateInput!]!) {
           fileCreate(files: $files) {
             files { ... on MediaImage { image { url } } }
-            userErrors { field message }
           }
         }`,
         variables: {
           files: [{
-            alt: "FurryFable Social Post",
+            alt: "FurryFable Content",
             contentType: "IMAGE",
             originalSource: `data:image/jpeg;base64,${imageData}`
           }]
