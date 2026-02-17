@@ -13,8 +13,8 @@ async function getFreshToken() {
     );
     return response.data.access_token;
   } catch (error) {
-    console.error("❌ Shopify Auth Failed:", error.response?.data || error.message);
-    throw new Error("Check Shopify Client ID/Secret in GitHub Secrets.");
+    console.error("❌ Shopify Auth Failed. Check your Client ID/Secret.");
+    throw error;
   }
 }
 
@@ -42,9 +42,11 @@ export async function getShopifyImageUrl(imagePath) {
       { headers: { "X-Shopify-Access-Token": token } }
     );
 
-    return response.data.data.fileCreate.files[0]?.image?.url;
+    const url = response.data.data.fileCreate.files[0]?.image?.url;
+    console.log("🛍️ Shopify Image Ready:", url);
+    return url;
   } catch (error) {
-    console.error("🛍️ Shopify Upload Error:", error.message);
+    console.error("🛍️ Shopify Upload Failed.");
     return null;
   }
 }
