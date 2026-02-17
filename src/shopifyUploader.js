@@ -1,9 +1,12 @@
 import axios from "axios";
 import fs from "fs";
 
+/**
+ * Fetches a fresh 24-hour token using Client Credentials (2026 Shopify Update)
+ */
 async function getFreshToken() {
-  // Cleans up the store name in case there's an extra .myshopify.com
-  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "");
+  // Cleans up the store name to ensure it's just the handle (e.g., vfsn10-30)
+  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
   
   try {
     const response = await axios.post(
@@ -16,22 +19,29 @@ async function getFreshToken() {
     );
     return response.data.access_token;
   } catch (error) {
-    console.error("❌ Shopify Auth Error:", error.response?.status, error.message);
-    throw error;
+    // Improved logging to help you see exactly what Shopify is rejecting
+    console.error(`❌ Shopify Auth Failed (${error.response?.status}):`, error.response?.data || error.message);
+    throw new Error("Check your SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET in GitHub Secrets.");
   }
 }
 
+/**
+ * Uploads local image to Shopify to get a public URL for Instagram
+ */
 export async function getShopifyImageUrl(imagePath) {
+  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
+  
   try {
     const token = await getFreshToken();
     const imageData = fs.readFileSync(imagePath, { encoding: "base64" });
 
     const response = await axios.post(
-      `https://${process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "")}.myshopify.com/admin/api/2026-01/graphql.json`,
+      `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
       {
         query: `mutation fileCreate($files: [FileCreateInput!]!) {
           fileCreate(files: $files) {
             files { ... on MediaImage { image { url } } }
+            userErrors { field message }
           }
         }`,
         variables: {
@@ -45,9 +55,13 @@ export async function getShopifyImageUrl(imagePath) {
       { headers: { "X-Shopify-Access-Token": token } }
     );
 
-    return response.data.data.fileCreate.files[0]?.image?.url;
+    const url = response.data.data.fileCreate.files[0]?.image?.url;
+    if (url) {
+      console.log("🛍️ Shopify Public URL generated successfully.");
+    }
+    return url;
   } catch (error) {
-    console.error("🛍️ Shopify Upload Failed.");
+    console.error("🛍️ Shopify Upload Error:", error.message);
     return null;
   }
 }
