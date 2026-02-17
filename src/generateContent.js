@@ -3,81 +3,36 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function generatePosts(history, blog) {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  // Use modern supported model
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash"
-  });
-
-  // Get last 30 used topics to avoid repetition
-  const usedTopics = history
-    .slice(-30)
-    .map(row => row[1])
-    .filter(Boolean)
-    .join(", ");
-
-  const blogInfo = blog
-    ? `Latest blog title: ${blog.title}
-Blog URL: ${blog.link}
-Blog summary: ${blog.description}`
+  const usedTopics = history.slice(-30).map(row => row[1]).filter(Boolean).join(", ");
+  const blogInfo = blog 
+    ? `Latest blog: ${blog.title}\nURL: ${blog.link}` 
     : "No blog available today.";
 
   const prompt = `
-You are creating 3 high-quality Facebook posts for a premium pet brand called FurryFable.
+Create 3 high-quality Facebook posts for FurryFable.
+Tone: Calm, storytelling, premium.
 
-Brand Tone:
-- Calm
-- Emotional storytelling
-- Minimal
-- Premium
-- No hype
-- No medical claims
-- No exaggerated promises
-
-Avoid repeating these past topics:
-${usedTopics}
-
+Avoid repeating these topics: ${usedTopics}
 ${blogInfo}
 
 Rules:
-1. If blog exists, create 1 post based on that blog and include its URL inside the caption.
-2. Create 2 additional unique pet-related posts.
-3. Avoid generic quotes.
-4. Make content engaging but natural.
-5. Each post must include hashtags.
-6. Return ONLY valid JSON array.
-7. No explanations. No markdown.
+1. If blog exists, make 1 post about it with its URL.
+2. Create 2 additional unique pet posts.
+3. For EACH post, generate a unique "engagementComment" - a short, fun question to encourage replies.
+4. Return ONLY valid JSON array.
 
-Format exactly like this:
-
+Format:
 [
   {
-    "topic": "",
-    "angle": "",
-    "postType": "",
-    "breed": "",
-    "furColor": "",
-    "caption": "",
-    "hashtags": "",
-    "altText": "",
-    "imagePrompt": ""
+    "topic": "", "angle": "", "postType": "", "breed": "", "furColor": "",
+    "caption": "", "hashtags": "", "altText": "", "imagePrompt": "",
+    "engagementComment": ""
   }
-]
-`;
+]`;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
-    const cleaned = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
-    return JSON.parse(cleaned);
-
-  } catch (error) {
-    console.error("❌ Gemini API error:", error.message);
-    throw error;
-  }
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().replace(/```json|```/g, "").trim();
+  return JSON.parse(text);
 }
