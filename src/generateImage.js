@@ -3,8 +3,13 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function generateImage(post) {
 
@@ -23,14 +28,54 @@ No watermark.
   const fileName = `${uuidv4()}.png`;
   const filePath = path.join("/tmp", fileName);
 
-  const response = await openai.images.generate({
-    model: "gpt-image-1",
-    prompt,
-    size: "1024x1024"
-  });
+  // TRY OPENAI FIRST
+  try {
+    console.log("🖼 Trying OpenAI image generation...");
 
-  const imageBase64 = response.data[0].b64_json;
-  fs.writeFileSync(filePath, Buffer.from(imageBase64, "base64"));
+    const response = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt,
+      size: "1024x1024"
+    });
 
-  return { imagePath: filePath, provider: "OpenAI" };
+    const imageBase64 = response.data[0].b64_json;
+    fs.writeFileSync(filePath, Buffer.from(imageBase64, "base64"));
+
+    return { imagePath: filePath, provider: "OpenAI" };
+
+  } catch (error) {
+    console.log("⚠️ OpenAI failed. Switching to Gemini...");
+
+    // GEMINI FALLBACK
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash"
+      });
+
+      const result = await model.generateContent({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          responseModalities: ["IMAGE"]
+        }
+      });
+
+      const imagePart = result.response.candidates[0].content.parts.find(
+        part => part.inlineData
+      );
+
+      const imageBase64 = imagePart.inlineData.data;
+      fs.writeFileSync(filePath, Buffer.from(imageBase64, "base64"));
+
+      return { imagePath: filePath, provider: "Gemini" };
+
+    } catch (geminiError) {
+      console.error("❌ Gemini image generation also failed.");
+      throw geminiError;
+    }
+  }
 }
