@@ -14,22 +14,42 @@ function getAuth() {
 export async function getSheetRows() {
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
+
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A2:M1000`,
+    range: `${SHEET_NAME}!A2:M1000`, // Fetches up to column M
   });
+
   return response.data.values || [];
 }
 
-export async function appendRow(data) {
+export async function appendRow(rowData) {
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
-  const row = [data.date, data.topic, data.caption, data.fbPostId, data.blogUrl];
-  
+
+  // EXACT ORDER: Date, Topic, Angle, Post Type, Breed, Fur Color, Caption, Hashtags, Alt Text, Image Prompt, Image Provider, FB Post ID, Similarity Score
+  const row = [
+    rowData.date || new Date().toISOString(),
+    rowData.topic || "",
+    rowData.angle || "",
+    rowData.postType || "",
+    rowData.breed || "",
+    rowData.furColor || "",
+    rowData.caption || "",
+    rowData.hashtags || "",
+    rowData.altText || "",
+    rowData.imagePrompt || "",
+    rowData.imageProvider || "",
+    rowData.fbPostId || "",
+    rowData.similarityScore || 0,
+  ];
+
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A:E`,
+    range: `${SHEET_NAME}!A:M`, // Append to a 13-column range
     valueInputOption: "USER_ENTERED",
-    resource: { values: [row] },
+    requestBody: {
+      values: [row],
+    },
   });
 }
