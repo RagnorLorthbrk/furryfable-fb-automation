@@ -27,16 +27,25 @@ export async function appendRow(rowData) {
 
   // EXACT ORDER: Date, Topic, Angle, Post Type, Breed, Fur Color, Caption, Hashtags, Alt Text, Image Prompt, Image Provider, FB Post ID, Similarity Score
   const row = [
-    rowData.date, rowData.topic, rowData.angle, rowData.postType,
-    rowData.breed, rowData.furColor, rowData.caption, rowData.hashtags,
-    rowData.altText, rowData.imagePrompt, rowData.imageProvider,
-    rowData.fbPostId, rowData.similarityScore
+    rowData.date || new Date().toISOString(),
+    rowData.topic || "",
+    rowData.angle || "",
+    rowData.postType || "",
+    rowData.breed || "",
+    rowData.furColor || "",
+    rowData.caption || "",
+    rowData.hashtags || "",
+    rowData.altText || "",
+    rowData.imagePrompt || "",
+    rowData.imageProvider || "",
+    rowData.fbPostId || "",
+    rowData.similarityScore || 0,
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range: `${SHEET_NAME}!A:M`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] },
+    resource: { values: [row] },
   });
 }
