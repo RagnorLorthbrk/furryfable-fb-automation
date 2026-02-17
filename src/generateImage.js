@@ -1,83 +1,45 @@
+import OpenAI from "openai";
+import fs from "fs";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-export async function generatePosts(history, blog) {
-
-  const usedTopics = history
-    .slice(-30)
-    .map(row => row[1])
-    .filter(Boolean)
-    .join(", ");
-
-  const blogInfo = blog
-    ? `Latest blog title: ${blog.title}
-Blog URL: ${blog.link}
-Blog summary: ${blog.description}`
-    : "No blog available today.";
-
-  const prompt = `
-Create 3 high-quality Facebook posts for premium pet brand FurryFable.
-
-Brand tone:
-- Calm
-- Emotional storytelling
-- Minimal
-- Premium
-- No hype
-- No medical claims
-
-Avoid repeating topics:
-${usedTopics}
-
-${blogInfo}
-
-Rules:
-1. If blog exists, create 1 post based on it and include its URL in caption.
-2. Create 2 additional unique pet-related posts.
-3. Each must include hashtags.
-4. Return ONLY valid JSON array.
-5. No markdown. No explanation.
-
-Format:
-
-[
-  {
-    "topic": "",
-    "angle": "",
-    "postType": "",
-    "breed": "",
-    "furColor": "",
-    "caption": "",
-    "hashtags": "",
-    "altText": "",
-    "imagePrompt": ""
-  }
-]
-`;
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-  const response = await axios.post(url, {
-    contents: [
-      {
-        parts: [{ text: prompt }]
-      }
-    ]
-  });
-
-  const text = response.data.candidates[0].content.parts[0].text;
-
-  const cleaned = text
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
+export async function generateImage(post) {
+  const prompt = `Professional studio pet photography of a ${post.breed}, ${post.furColor} fur. Scene: ${post.imagePrompt}. Soft bokeh, natural lighting, 1080x1080 square, no text.`;
+  const fileName = `${uuidv4()}.png`;
+  const filePath = path.join("/tmp", fileName);
 
   try {
-    return JSON.parse(cleaned);
-  } catch (error) {
-    console.error("❌ Gemini returned invalid JSON:");
-    console.error(cleaned);
-    throw new Error("Invalid JSON from Gemini");
+    console.log("🖼 Trying OpenAI (DALL-E 3)...");
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt,
+      response_format: "b64_json"
+    });
+    fs.writeFileSync(filePath, Buffer.from(response.data[0].b64_json, "base64"));
+    return { imagePath: filePath, provider: "OpenAI" };
+
+  } catch (err) {
+    console.log("⚠️ OpenAI failed. Switching to Gemini REST (Nano Banana)...");
+    try {
+      // Use the stable 2.5 Flash Image model from your blog automation
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
+      const res = await axios.post(url, {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"] }
+      });
+
+      const imageData = res.data.candidates[0].content.parts.find(p => p.inlineData)?.inlineData.data;
+      if (!imageData) throw new Error("No image data returned.");
+
+      fs.writeFileSync(filePath, Buffer.from(imageData, "base64"));
+      return { imagePath: filePath, provider: "Gemini" };
+    } catch (fallbackErr) {
+      console.error("❌ Both Image APIs failed:", fallbackErr.message);
+      throw fallbackErr;
+    }
   }
 }
