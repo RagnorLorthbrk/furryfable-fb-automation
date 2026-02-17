@@ -25,7 +25,11 @@ export async function appendRow(rowData) {
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
 
-  // EXACT ORDER: Date, Topic, Angle, Post Type, Breed, Fur Color, Caption, Hashtags, Alt Text, Image Prompt, Image Provider, FB Post ID, Similarity Score
+  // FIX: Convert hashtags array into a space-separated string
+  const hashtagsString = Array.isArray(rowData.hashtags) 
+    ? rowData.hashtags.join(" ") 
+    : rowData.hashtags || "";
+
   const row = [
     rowData.date || new Date().toISOString(),
     rowData.topic || "",
@@ -34,7 +38,7 @@ export async function appendRow(rowData) {
     rowData.breed || "",
     rowData.furColor || "",
     rowData.caption || "",
-    rowData.hashtags || "",
+    hashtagsString, // Now sending text, not a list
     rowData.altText || "",
     rowData.imagePrompt || "",
     rowData.imageProvider || "",
