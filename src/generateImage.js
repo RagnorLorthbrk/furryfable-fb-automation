@@ -2,44 +2,58 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function generateImage(post) {
-  const prompt = `Professional studio pet photography of a ${post.breed}, ${post.furColor} fur. Scene: ${post.imagePrompt}. Soft bokeh, natural lighting, 1080x1080 square, no text.`;
-  const fileName = `${uuidv4()}.png`;
-  const filePath = path.join("/tmp", fileName);
+  const fileName = `pet-post_${uuidv4()}.png`;
+  const imagePath = path.join("/tmp", fileName);
+
+  const imagePrompt = `
+Create ONE realistic, single-scene lifestyle photo.
+
+Strict rules:
+- Only ONE main action.
+- No split-screen.
+- No collage.
+- No multiple scenes.
+- No brand logos.
+- No product packaging.
+- No medical procedures unless explicitly required.
+- No unrealistic handling of pets.
+- No exaggerated expressions.
+- Natural lighting.
+- Warm emotional tone.
+- Realistic pet proportions.
+- Clean composition.
+
+Scene description:
+${post.imagePrompt}
+
+The image must logically match the caption.
+Do not introduce additional actions not described.
+`;
 
   try {
-    console.log("🖼 Trying OpenAI (DALL-E 3)...");
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt,
-      response_format: "b64_json"
+    console.log("🖼 Trying OpenAI image generation...");
+
+    const result = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt: imagePrompt,
+      size: "1024x1024"
     });
-    fs.writeFileSync(filePath, Buffer.from(response.data[0].b64_json, "base64"));
-    return { imagePath: filePath, provider: "OpenAI" };
 
-  } catch (err) {
-    console.log("⚠️ OpenAI failed. Switching to Gemini REST (Nano Banana)...");
-    try {
-      // Use the stable 2.5 Flash Image model from your blog automation
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
-      const res = await axios.post(url, {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["IMAGE"] }
-      });
+    const base64Image = result.data[0].b64_json;
+    const buffer = Buffer.from(base64Image, "base64");
 
-      const imageData = res.data.candidates[0].content.parts.find(p => p.inlineData)?.inlineData.data;
-      if (!imageData) throw new Error("No image data returned.");
+    fs.writeFileSync(imagePath, buffer);
 
-      fs.writeFileSync(filePath, Buffer.from(imageData, "base64"));
-      return { imagePath: filePath, provider: "Gemini" };
-    } catch (fallbackErr) {
-      console.error("❌ Both Image APIs failed:", fallbackErr.message);
-      throw fallbackErr;
-    }
+    return { imagePath, provider: "OpenAI" };
+
+  } catch (error) {
+    console.error("⚠️ OpenAI image failed:", error.message);
+    throw error;
   }
 }
