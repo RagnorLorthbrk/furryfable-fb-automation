@@ -1,29 +1,107 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function generatePosts(history, blog) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const recentTopics = history
+    .map(r => r[1])
+    .slice(-15)
+    .join(", ");
 
-  const blogContext = blog 
-    ? `NEW BLOG: "${blog.title}". Link: ${blog.link}. One post MUST be a deep-dive into this topic and include the link.`
-    : "No new blog today. Focus on general pet tips.";
+  const blogContext = blog
+    ? `
+There is a new blog post available:
+Title: ${blog.title}
+Link: ${blog.link}
+Summary: ${blog.summary}
 
-  const prompt = `
-Generate 3 unique social media posts for FurryFable.
-${blogContext}
-
-STRICT INSTRUCTIONS:
-- Post 1: Informative Expert (Start with a surprising fact).
-- Post 2: Heartfelt Story (Focus on the human-pet bond).
-- Post 3: Short Engagement (Ask a direct question).
-- NEVER use the same opening phrase. 
-- If a link is provided, put it in the caption. DO NOT say "link in bio".
-
-Return ONLY JSON array: [{topic, angle, postType, breed, furColor, caption, hashtags, altText, imagePrompt, engagementComment}]
+One of the three posts MUST meaningfully reference this blog.
+Do NOT fabricate additional links.
+`
+    : `
+No new blog post today.
+Do NOT reference any blog.
 `;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().replace(/```json|```/g, "").trim();
-  return JSON.parse(text);
+  const prompt = `
+You are creating 3 high-quality social media posts for the brand FurryFable.
+
+Brand personality:
+- Warm
+- Intelligent
+- Trustworthy
+- Friendly but confident
+- Community-focused
+- Never salesy
+- Never promotional of specific brands
+
+${blogContext}
+
+Recent topics already used:
+${recentTopics}
+
+Topic Diversity & Rotation Rules:
+- Do NOT repeat topics from the recent list.
+- Avoid clustering medical topics (dental, illness, vet visits, hydration).
+- At least 2 of the 3 posts must NOT be health-related.
+- Rotate between:
+  1. Pet-owner bonding
+  2. Training
+  3. Enrichment
+  4. Seasonal care
+  5. Behavior insights
+  6. Fun facts
+  7. Lifestyle moments
+  8. Safety tips
+  9. Emotional storytelling
+  10. Light nutrition (non-medical)
+
+Hard Restrictions:
+- No fake statistics.
+- No fake links.
+- No product brands.
+- No fabricated medical claims.
+- No overly clinical tone.
+- No repetitive themes.
+
+For EACH post, return:
+
+{
+  topic: short theme title,
+  angle: short angle summary,
+  postType: "educational" | "emotional" | "engagement",
+  breed: optional breed if relevant,
+  furColor: optional,
+  caption: full caption text,
+  hashtags: 6–8 relevant hashtags as array,
+  engagementComment: 1–2 sentence brand-voice comment that:
+      - Encourages replies
+      - Asks ONE clear open-ended question
+      - Sounds like the brand (not a follower)
+      - Never says “I’ll try this” or reacts like a user
+  imagePrompt: short scene description for image generation
+}
+
+Return ONLY valid JSON array with exactly 3 posts.
+`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.85,
+    messages: [
+      { role: "system", content: "You are a professional social media strategist." },
+      { role: "user", content: prompt }
+    ]
+  });
+
+  const content = response.choices[0].message.content.trim();
+
+  try {
+    return JSON.parse(content);
+  } catch (err) {
+    console.error("❌ JSON Parse Error:", content);
+    throw err;
+  }
 }
