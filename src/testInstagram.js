@@ -34,28 +34,28 @@ async function run() {
     }
 
     console.log("✅ Shopify CDN URL:", publicUrl);
-
-    console.log("📸 Attempting Instagram publish with retry logic...");
+    console.log("📸 Starting Instagram publish attempts (1 min spacing)...");
 
     let igId = null;
-    let attempts = 0;
 
-    while (!igId && attempts < 5) {
-      attempts++;
-      console.log(`⏳ IG Attempt ${attempts}/5`);
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      console.log(`⏳ IG Attempt ${attempt}/5`);
 
       igId = await postToInstagram(fullCaption, publicUrl);
 
-      if (!igId) {
-        console.log("⏳ IG not ready, waiting 30 seconds...");
-        await sleep(30000);
+      if (igId) {
+        console.log("✅ IG SUCCESS:", igId);
+        break;
+      }
+
+      if (attempt < 5) {
+        console.log("⏳ Waiting 60 seconds before next attempt...");
+        await sleep(60000); // 1 minute wait
       }
     }
 
-    if (igId) {
-      console.log("✅ IG SUCCESS:", igId);
-    } else {
-      console.error("❌ IG FAILED after 5 attempts");
+    if (!igId) {
+      console.error("❌ IG FAILED after 5 attempts (~5 minutes total)");
       process.exit(1);
     }
 
