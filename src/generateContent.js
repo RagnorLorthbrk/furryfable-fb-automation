@@ -20,16 +20,25 @@ Title: ${blog.title}
 Link: ${blog.link}
 Summary: ${blog.description}
 
-One of the 3 posts MUST meaningfully reference this blog.
+One of the three posts MUST meaningfully reference this blog.
 Do NOT fabricate links.
 `
     : `
-No new blog post today.
+There is no new blog post today.
 Do NOT reference any blog.
 `;
 
   const prompt = `
-You are creating 3 high-quality social media posts for the brand FurryFable.
+You are a senior social media strategist for FurryFable.
+
+Before writing:
+- Think about what pet owners genuinely experience in daily life.
+- Avoid generic advice.
+- Avoid cliché hooks like “Did you know?”
+- Vary sentence rhythm naturally.
+- Include small realistic details.
+- Avoid sounding scripted or robotic.
+- Avoid overly dramatic emotional language.
 
 Brand personality:
 - Warm
@@ -76,38 +85,40 @@ Hard Restrictions:
 - No mentioning brands we do not sell.
 - No recommending specific commercial products.
 
-For EACH post, return:
+Engagement Comment Rules:
+- Ask ONE thoughtful open-ended question.
+- Invite conversation.
+- Sound like the brand initiating discussion.
+- Never react like a follower.
+- Never say “I’ll try this”.
+- Avoid generic questions like “Do you agree?”
 
-{
-  topic: short theme title,
-  angle: short angle summary,
-  postType: "educational" | "emotional" | "engagement",
-  breed: optional breed if relevant,
-  furColor: optional,
-  caption: full caption text,
-  hashtags: 6–8 relevant hashtags as array,
-  engagementComment: 1–2 sentence brand-voice comment that:
-      - Encourages replies
-      - Asks ONE clear open-ended question
-      - Invites conversation
-      - Never reacts like a follower
-      - Never says “I’ll try this”
-      - Never agrees with the post as if separate from it
-  imagePrompt: short scene description for image generation
-}
+Return ONLY valid JSON array with exactly 3 posts:
 
-Return ONLY valid JSON array with exactly 3 posts.
+[
+  {
+    topic,
+    angle,
+    postType,
+    breed,
+    furColor,
+    caption,
+    hashtags,
+    engagementComment,
+    imagePrompt
+  }
+]
 `;
 
-  // 🔥 TRY OPENAI FIRST
+  // 🔥 PRIMARY: OpenAI
   try {
     console.log("📝 Trying OpenAI content generation...");
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      temperature: 0.85,
+      temperature: 0.9,
       messages: [
-        { role: "system", content: "You are a professional social media strategist." },
+        { role: "system", content: "You are an experienced social media strategist." },
         { role: "user", content: prompt }
       ]
     });
@@ -117,17 +128,18 @@ Return ONLY valid JSON array with exactly 3 posts.
   } catch (error) {
     console.warn("⚠️ OpenAI failed. Switching to Gemini...");
 
-    // 🔥 FALLBACK TO GEMINI
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // 🔥 FALLBACK: Gemini (using your verified working model)
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash"
+    });
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
 
-    try {
-      return JSON.parse(text.trim());
-    } catch (err) {
-      console.error("❌ Gemini JSON parse failed:", text);
-      throw err;
-    }
+    const text = result.response
+      .text()
+      .replace(/```json|```/g, "")
+      .trim();
+
+    return JSON.parse(text);
   }
 }
