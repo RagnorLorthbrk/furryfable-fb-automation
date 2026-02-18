@@ -20,15 +20,11 @@ jobs:
 
       - name: Run Test Script
         env:
-          # Your store prefix (e.g., furryfable-fb-automation)
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
-          # The Client ID from your Shopify Partner Dashboard
           SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
-          # The Client Secret from your Shopify Partner Dashboard
           SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-          
-          # Force Node to ignore the expired Shopify certificate
+          # Bypasses the expired SSL certificate
           NODE_TLS_REJECT_UNAUTHORIZED: '0'
-          # Prevent DNS timeout (EAI_AGAIN error)
+          # Fixes DNS timeout issues
           UV_THREADPOOL_SIZE: '64'
         run: node src/testShopify.js
