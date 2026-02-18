@@ -1,59 +1,62 @@
 import axios from "axios";
-import https from "https";
 import fs from "fs";
 
-const agent = new https.Agent({ rejectUnauthorized: false });
-
 export async function getShopifyImageUrl(imagePath) {
-  const rawStore = process.env.SHOPIFY_STORE_NAME || "";
-  const shop = rawStore.toLowerCase()
-    .replace(/^https?:\/\//, "")
-    .replace(/\.myshopify\.com\/?.*$/, "")
-    .trim();
-  
-  // Uses your verified token from the successful test
+  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
   const accessToken = process.env.SHOPIFY_CLIENT_SECRET;
 
   try {
-    const imageData = fs.readFileSync(imagePath, { encoding: "base64" });
+    // STEP 1: Request a staged upload target
+    const stagedResponse = await axios.post(
+      `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
+      {
+        query: `mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+          stagedUploadsCreate(input: $input) {
+            stagedTargets { url resourceUrl parameters { name value } }
+          }
+        }`,
+        variables: {
+          input: [{
+            filename: "pet-post.jpg",
+            mimeType: "image/jpeg",
+            resource: "IMAGE",
+            httpMethod: "POST"
+          }]
+        }
+      },
+      { headers: { 'X-Shopify-Access-Token': accessToken } }
+    );
 
-    // This mutation uploads the image to Shopify Files
-    const response = await axios.post(
+    const target = stagedResponse.data.data.stagedUploadsCreate.stagedTargets[0];
+
+    // STEP 2: Push the actual file to the target URL
+    const formData = new FormData();
+    target.parameters.forEach(p => formData.append(p.name, p.value));
+    formData.append("file", fs.createReadStream(imagePath));
+
+    await axios.post(target.url, formData);
+
+    // STEP 3: Finalize the file in Shopify
+    const fileResponse = await axios.post(
       `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
       {
         query: `mutation fileCreate($files: [FileCreateInput!]!) {
           fileCreate(files: $files) {
             files { ... on MediaImage { image { url } } }
-            userErrors { field message }
           }
         }`,
         variables: {
-          files: [{
-            alt: "FurryFable Social Content",
-            contentType: "IMAGE",
-            originalSource: `data:image/jpeg;base64,${imageData}`
-          }]
+          files: [{ contentType: "IMAGE", originalSource: target.resourceUrl }]
         }
       },
-      { 
-        headers: { 'X-Shopify-Access-Token': accessToken },
-        httpsAgent: agent 
-      }
+      { headers: { 'X-Shopify-Access-Token': accessToken } }
     );
 
-    const url = response.data.data.fileCreate.files[0]?.image?.url;
-    
-    if (url) {
-      const cleanUrl = url.split('?')[0]; // Clean for Instagram
-      console.log("📸 Shopify URL Ready:", cleanUrl);
-      return cleanUrl;
-    }
-    
-    console.error("❌ Shopify returned no URL. Errors:", response.data.data.fileCreate.userErrors);
-    return null;
+    const finalUrl = fileResponse.data.data.fileCreate.files[0]?.image?.url;
+    return finalUrl ? finalUrl.split('?')[0] : null;
 
   } catch (error) {
-    console.error("❌ Shopify Upload Failed.");
+    console.error("❌ Shopify Staged Upload Failed:", error.message);
     return null;
   }
 }
