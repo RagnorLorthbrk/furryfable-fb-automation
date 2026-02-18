@@ -1,44 +1,53 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import axios from "axios";
+import { generatePosts } from "./generateContent.js";
+import { generateImage } from "./generateImage.js";
+import { getShopifyImageUrl } from "./shopifyUploader.js";
+import { getSheetRows } from "./sheetsLogger.js";
+import { postToInstagram } from "./postToFacebook.js";
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function run() {
-  console.log("🚀 Testing Instagram Only...");
-
-  const IG_ID = process.env.IG_USER_ID;
-  const TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
-
-  const testCaption = "IG Automation Test Post 🚀\n\n#FurryFable #TestPost";
-  const testImageUrl = "https://www.furryfable.com/cdn/shop/articles/c30877b940e0db8a45bd03b1dce20881.png?v=1771415971";
+  console.log("🚀 IG FULL PIPELINE TEST STARTED");
 
   try {
-    const container = await axios.post(
-      `https://graph.facebook.com/v24.0/${IG_ID}/media`,
-      {
-        image_url: testImageUrl,
-        caption: testCaption,
-        access_token: TOKEN
-      }
-    );
+    // 1️⃣ Load history so AI avoids repetition
+    const history = await getSheetRows();
 
-    console.log("⏳ Waiting 15s for IG processing...");
+    // 2️⃣ Generate only 1 post
+    const posts = await generatePosts(history, null);
+    const post = posts[0];
+
+    const fullCaption = `${post.caption}\n\n${post.hashtags}`;
+
+    console.log("🖼 Generating AI image...");
+    const { imagePath } = await generateImage(post);
+
+    console.log("☁ Uploading to Shopify...");
+    const publicUrl = await getShopifyImageUrl(imagePath);
+
+    if (!publicUrl) {
+      console.error("❌ Shopify upload failed.");
+      process.exit(1);
+    }
+
+    console.log("⏳ Waiting 15s for Shopify CDN...");
     await sleep(15000);
 
-    const publish = await axios.post(
-      `https://graph.facebook.com/v24.0/${IG_ID}/media_publish`,
-      {
-        creation_id: container.data.id,
-        access_token: TOKEN
-      }
-    );
+    console.log("📸 Posting to Instagram...");
+    const igId = await postToInstagram(fullCaption, publicUrl);
 
-    console.log("✅ IG Post Successful:", publish.data.id);
+    if (igId) {
+      console.log("✅ IG SUCCESS:", igId);
+    } else {
+      console.error("❌ IG FAILED");
+      process.exit(1);
+    }
 
   } catch (error) {
-    console.error("📸 Instagram Error:", error.response?.data || error.message);
+    console.error("❌ PIPELINE ERROR:", error.response?.data || error.message);
     process.exit(1);
   }
 }
