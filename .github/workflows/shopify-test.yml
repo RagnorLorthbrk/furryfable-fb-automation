@@ -18,15 +18,17 @@ jobs:
       - name: Install dependencies
         run: npm install axios dotenv
 
-      - name: Run Test Script with Debugging
+      - name: Run Test Script
         env:
+          # Your store prefix (e.g., furryfable-fb-automation)
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
-          # Use the fresh token you just verified
-          SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-          # Bypasses the certificate warning properly
+          # The Client ID from your Shopify Partner Dashboard
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          # The Client Secret from your Shopify Partner Dashboard
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          
+          # Force Node to ignore the expired Shopify certificate
           NODE_TLS_REJECT_UNAUTHORIZED: '0'
-          # Forces the runner to show more network details
-          DEBUG: 'axios' 
-        run: |
-          echo "Checking connection to: ${{ secrets.SHOPIFY_STORE_NAME }}.myshopify.com"
-          node src/testShopify.js
+          # Prevent DNS timeout (EAI_AGAIN error)
+          UV_THREADPOOL_SIZE: '64'
+        run: node src/testShopify.js
