@@ -20,7 +20,7 @@ async function run() {
   // 2️⃣ Fetch latest blog
   let blog = await getLatestBlog();
 
-  // 3️⃣ Check if blog already posted
+  // 3️⃣ Skip blog if already posted
   if (blog && history.some(row => row.some(cell => String(cell).includes(blog.link)))) {
     console.log(`⏭️ Blog "${blog.title}" already shared. Skipping.`);
     blog = null;
@@ -31,25 +31,31 @@ async function run() {
 
   for (const post of posts) {
     try {
-      // 🖼 Generate image (only once)
-      const { imagePath, provider } = await generateImage(post);
-      const fullCaption = `${post.caption}\n\n${post.hashtags}`;
+      console.log("--------------------------------------------------");
+      console.log(`📝 Creating post about: ${post.topic}`);
 
-      // ☁ Upload to Shopify (for IG use)
+      // 🖼 Generate image ONCE
+      const { imagePath, provider } = await generateImage(post);
+      const fullCaption = `${post.caption}\n\n${post.hashtags.join(" ")}`;
+
+      // ☁ Upload to Shopify for IG
       const publicUrl = await getShopifyImageUrl(imagePath);
 
-      // 📘 Post to Facebook (uses local image)
+      if (!publicUrl) {
+        console.error("❌ Shopify upload failed. Skipping IG.");
+      }
+
+      // 📘 Post to Facebook
       const fbPostId = await postToFacebook(fullCaption, imagePath);
       console.log(`✅ FB Live: ${fbPostId}`);
 
-      // 📸 Post to Instagram (uses Shopify CDN URL)
+      // 📸 Post to Instagram
       let igId = null;
 
       if (publicUrl && process.env.IG_USER_ID) {
-        console.log(`🔍 Attempting IG Post with URL: ${publicUrl}`);
-
         try {
-          await sleep(10000); // small delay before IG publish
+          console.log(`🔍 Attempting IG Post with URL: ${publicUrl}`);
+          await sleep(15000); // slight delay before IG call
           igId = await postToInstagram(fullCaption, publicUrl);
 
           if (igId) {
@@ -57,12 +63,9 @@ async function run() {
           } else {
             console.log("❌ IG Post failed.");
           }
-
         } catch (err) {
           console.error("❌ IG API Error:", err.response?.data || err.message);
         }
-      } else {
-        console.log(`⚠️ IG SKIP: ${!publicUrl ? 'Shopify URL missing' : 'IG_USER_ID missing'}`);
       }
 
       // 💬 Add Facebook Comment
@@ -75,11 +78,11 @@ async function run() {
           }
         );
         console.log("💬 FB Comment added");
-      } catch (e) {
-        console.warn("⚠️ FB Comment failed");
+      } catch (err) {
+        console.warn("⚠️ FB Comment failed:", err.response?.data || err.message);
       }
 
-      // 💬 Add Instagram Comment (if IG succeeded)
+      // 💬 Add Instagram Comment
       if (igId) {
         try {
           await axios.post(
@@ -90,26 +93,40 @@ async function run() {
             }
           );
           console.log("💬 IG Comment added");
-        } catch (e) {
-          console.warn("⚠️ IG Comment failed:", e.response?.data || e.message);
+        } catch (err) {
+          console.warn("⚠️ IG Comment failed:", err.response?.data || err.message);
         }
       }
 
       // 📊 Log to Google Sheets
       await appendRow({
         date: new Date().toISOString(),
-        ...post,
+        topic: post.topic,
+        angle: post.angle,
+        postType: post.postType,
+        breed: post.breed || "",
+        furColor: post.furColor || "",
+        caption: post.caption,
+        hashtags: post.hashtags.join(" "),
+        altText: "",
+        imagePrompt: post.imagePrompt,
         imageProvider: provider,
         fbPostId,
         similarityScore: 0
       });
 
-      await sleep(5000); // delay between posts
+      console.log("📊 Logged to Google Sheets");
+
+      // 🔥 IMPORTANT FIX — Increase delay between posts
+      console.log("⏳ Waiting 30 seconds before next post...");
+      await sleep(30000);
 
     } catch (err) {
-      console.error("❌ Error in post loop:", err.message);
+      console.error("❌ Error inside post loop:", err.message);
     }
   }
+
+  console.log("🎉 Automation completed.");
 }
 
 run().catch(err => {
