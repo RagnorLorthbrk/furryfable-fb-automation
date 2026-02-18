@@ -2,8 +2,8 @@ name: FurryFable Automation
 
 on:
   schedule:
-    - cron: '0 3,9,15 * * *' # Runs 3 times a day
-  workflow_dispatch: # Allows manual testing
+    - cron: '0 3,9,15 * * *'
+  workflow_dispatch:
 
 jobs:
   run:
@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Updated to match your successful test
+          node-version: '20' # Matches your successful test
 
       - name: Install dependencies
         run: npm install
@@ -23,22 +23,19 @@ jobs:
       - name: Run automation
         run: node src/index.js
         env:
-          # Google Sheets Secrets
           GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
           GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          
-          # AI & Social Media Secrets
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           
-          # Shopify Secrets (Matched to your successful test run)
+          # MATCHED EXACTLY TO YOUR SUCCESSFUL TEST
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
           SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }} 
           
-          # SSL and Performance Fixes (From your test)
+          # SSL AND TIMEOUT FIXES FROM TEST
           NODE_TLS_REJECT_UNAUTHORIZED: '0'
           UV_THREADPOOL_SIZE: '64'
