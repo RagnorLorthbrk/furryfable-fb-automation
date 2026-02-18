@@ -1,10 +1,12 @@
-name: Instagram Standalone Test
+name: FurryFable Automation
 
 on:
-  workflow_dispatch: # Manual trigger only
+  schedule:
+    - cron: '0 3,9,15 * * *'
+  workflow_dispatch:
 
 jobs:
-  test-ig:
+  run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -13,22 +15,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Using Node 20 as per your successful test
+          node-version: '20' # Matches your successful test
 
       - name: Install dependencies
         run: npm install
 
-      - name: Run IG Test
-        run: node src/postToInstagramOnly.js
+      - name: Run automation
+        run: node src/index.js
         env:
+          # Keep all your existing secrets exactly as they are
+          GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+          GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
           
-          # Shopify Auth (Using your verified test mapping)
+          # FIX: This is what made the test work
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
-          SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }} 
           
-          # SSL and Performance Fixes
+          # FIX: Prevents SSL/Timeout errors
           NODE_TLS_REJECT_UNAUTHORIZED: '0'
           UV_THREADPOOL_SIZE: '64'
