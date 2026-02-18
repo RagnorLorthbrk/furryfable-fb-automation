@@ -1,21 +1,14 @@
 import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export async function generateImage(post) {
-  const fileName = `pet-post_${uuidv4()}.png`;
-  const imagePath = path.join("/tmp", fileName);
-
-  const imagePrompt = `
-Create a natural, candid lifestyle photograph.
+  const prompt = `Create a natural, candid lifestyle photograph.
 
 The scene should feel like a real moment a pet owner might capture — not a staged advertisement.
 
@@ -36,51 +29,37 @@ Avoid:
 Scene description:
 ${post.imagePrompt}
 `;
+  const fileName = `${uuidv4()}.png`;
+  const filePath = path.join("/tmp", fileName);
 
-  // 🔥 OPENAI FIRST
   try {
-    console.log("🖼 Trying OpenAI image generation...");
-
-    const result = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt: imagePrompt,
-      size: "1024x1024"
+    console.log("🖼 Trying OpenAI (DALL-E 3)...");
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt,
+      response_format: "b64_json"
     });
+    fs.writeFileSync(filePath, Buffer.from(response.data[0].b64_json, "base64"));
+    return { imagePath: filePath, provider: "OpenAI" };
 
-    const base64Image = result.data[0].b64_json;
-    const buffer = Buffer.from(base64Image, "base64");
-
-    fs.writeFileSync(imagePath, buffer);
-
-    return { imagePath, provider: "OpenAI" };
-
-  } catch (error) {
-    console.warn("⚠️ OpenAI image failed. Switching to Gemini...");
-
-    // 🔥 GEMINI FALLBACK (WORKING VERSION)
+  } catch (err) {
+    console.log("⚠️ OpenAI failed. Switching to Gemini REST (Nano Banana)...");
     try {
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash"
+      // Use the stable 2.5 Flash Image model from your blog automation
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`;
+      const res = await axios.post(url, {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["IMAGE"] }
       });
 
-      const result = await model.generateContent(imagePrompt);
+      const imageData = res.data.candidates[0].content.parts.find(p => p.inlineData)?.inlineData.data;
+      if (!imageData) throw new Error("No image data returned.");
 
-      // Gemini returns base64 image in inlineData
-      const parts = result.response.candidates[0].content.parts;
-      const imagePart = parts.find(p => p.inlineData);
-
-      if (!imagePart) {
-        throw new Error("Gemini did not return image data.");
-      }
-
-      const buffer = Buffer.from(imagePart.inlineData.data, "base64");
-      fs.writeFileSync(imagePath, buffer);
-
-      return { imagePath, provider: "Gemini" };
-
-    } catch (geminiError) {
-      console.error("❌ Gemini image fallback failed.");
-      throw geminiError;
+      fs.writeFileSync(filePath, Buffer.from(imageData, "base64"));
+      return { imagePath: filePath, provider: "Gemini" };
+    } catch (fallbackErr) {
+      console.error("❌ Both Image APIs failed:", fallbackErr.message);
+      throw fallbackErr;
     }
   }
 }
