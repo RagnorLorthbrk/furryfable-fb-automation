@@ -1,26 +1,44 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { postToInstagram } from "./postToFacebook.js";
+import axios from "axios";
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function run() {
   console.log("🚀 Testing Instagram Only...");
 
-  const testCaption = "IG Automation Test Post 🚀\n\n#FurryFable #TestPost";
+  const IG_ID = process.env.IG_USER_ID;
+  const TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 
+  const testCaption = "IG Automation Test Post 🚀\n\n#FurryFable #TestPost";
   const testImageUrl = "https://www.furryfable.com/cdn/shop/articles/c30877b940e0db8a45bd03b1dce20881.png?v=1771415971";
 
-  if (!process.env.IG_USER_ID) {
-    console.error("❌ IG_USER_ID missing in secrets.");
-    process.exit(1);
-  }
+  try {
+    const container = await axios.post(
+      `https://graph.facebook.com/v24.0/${IG_ID}/media`,
+      {
+        image_url: testImageUrl,
+        caption: testCaption,
+        access_token: TOKEN
+      }
+    );
 
-  const igId = await postToInstagram(testCaption, testImageUrl);
+    console.log("⏳ Waiting 15s for IG processing...");
+    await sleep(15000);
 
-  if (igId) {
-    console.log(`✅ IG Post Successful: ${igId}`);
-  } else {
-    console.log("❌ IG Post Failed.");
+    const publish = await axios.post(
+      `https://graph.facebook.com/v24.0/${IG_ID}/media_publish`,
+      {
+        creation_id: container.data.id,
+        access_token: TOKEN
+      }
+    );
+
+    console.log("✅ IG Post Successful:", publish.data.id);
+
+  } catch (error) {
+    console.error("📸 Instagram Error:", error.response?.data || error.message);
     process.exit(1);
   }
 }
