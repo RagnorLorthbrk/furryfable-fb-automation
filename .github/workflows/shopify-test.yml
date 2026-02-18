@@ -15,22 +15,17 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Update Root CA Certificates
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates
-          sudo update-ca-certificates
-
       - name: Install dependencies
         run: npm install axios dotenv
 
       - name: Run Test Script
         env:
-          # Use JUST the store name here (e.g., your-store-name)
+          # Your store prefix, e.g., furryfable-fb-automation
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
+          # The Access Token you generated (NOT the Client Secret)
           SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-          # This tells Node to ignore the certificate error without needing https in the secret
+          # Fix for 'certificate has expired' error
           NODE_TLS_REJECT_UNAUTHORIZED: '0'
-          # Fix for DNS lookup timeouts
+          # Standard fix for DNS lookup errors in GitHub Actions
           UV_THREADPOOL_SIZE: '64'
         run: node src/testShopify.js
