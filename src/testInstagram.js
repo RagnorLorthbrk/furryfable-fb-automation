@@ -7,7 +7,7 @@ import { getShopifyImageUrl } from "./shopifyUploader.js";
 import { getSheetRows } from "./sheetsLogger.js";
 import { postToInstagram } from "./postToFacebook.js";
 
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function run() {
   console.log("🚀 IG FULL PIPELINE TEST STARTED");
@@ -33,16 +33,29 @@ async function run() {
       process.exit(1);
     }
 
-    console.log("⏳ Waiting 15s for Shopify CDN...");
-    await sleep(15000);
+    console.log("✅ Shopify CDN URL:", publicUrl);
 
-    console.log("📸 Posting to Instagram...");
-    const igId = await postToInstagram(fullCaption, publicUrl);
+    console.log("📸 Attempting Instagram publish with retry logic...");
+
+    let igId = null;
+    let attempts = 0;
+
+    while (!igId && attempts < 5) {
+      attempts++;
+      console.log(`⏳ IG Attempt ${attempts}/5`);
+
+      igId = await postToInstagram(fullCaption, publicUrl);
+
+      if (!igId) {
+        console.log("⏳ IG not ready, waiting 30 seconds...");
+        await sleep(30000);
+      }
+    }
 
     if (igId) {
       console.log("✅ IG SUCCESS:", igId);
     } else {
-      console.error("❌ IG FAILED");
+      console.error("❌ IG FAILED after 5 attempts");
       process.exit(1);
     }
 
