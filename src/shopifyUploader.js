@@ -2,6 +2,8 @@ import axios from "axios";
 import fs from "fs";
 import FormData from "form-data";
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function getShopifyImageUrl(imagePath) {
   const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
   const accessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
@@ -94,16 +96,52 @@ export async function getShopifyImageUrl(imagePath) {
       }
     );
 
-    console.log("🔎 Shopify fileCreate response:", JSON.stringify(fileResponse.data, null, 2));
+    const fileNode = fileResponse.data?.data?.fileCreate?.files?.[0];
 
-    const finalUrl =
-      fileResponse.data?.data?.fileCreate?.files?.[0]?.image?.url;
-
-    if (!finalUrl) {
-      console.error("❌ Shopify did not return final image URL.");
+    if (!fileNode) {
+      console.error("❌ Shopify fileCreate returned empty:", fileResponse.data);
       return null;
     }
 
+    // STEP 4 — Retry until image URL exists
+    let attempts = 0;
+    let finalUrl = fileNode.image?.url || null;
+
+    while (!finalUrl && attempts < 5) {
+      console.log(`⏳ Shopify processing... retry ${attempts + 1}/5`);
+      await sleep(3000);
+      attempts++;
+
+      const retryResponse = await axios.post(
+        `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
+        {
+          query: `
+            query {
+              node(id: "${fileNode.id}") {
+                ... on MediaImage {
+                  image { url }
+                }
+              }
+            }
+          `
+        },
+        {
+          headers: {
+            "X-Shopify-Access-Token": accessToken,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      finalUrl = retryResponse.data?.data?.node?.image?.url || null;
+    }
+
+    if (!finalUrl) {
+      console.error("❌ Shopify image URL not ready after retries.");
+      return null;
+    }
+
+    console.log("✅ Shopify image ready:", finalUrl);
     return finalUrl.split("?")[0];
 
   } catch (error) {
