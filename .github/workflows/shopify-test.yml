@@ -18,14 +18,15 @@ jobs:
       - name: Install dependencies
         run: npm install axios dotenv
 
-      - name: Run Test Script
+      - name: Run Test Script with Debugging
         env:
-          # Your store prefix, e.g., furryfable-fb-automation
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
-          # The Access Token you generated (NOT the Client Secret)
+          # Use the fresh token you just verified
           SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-          # Fix for 'certificate has expired' error
+          # Bypasses the certificate warning properly
           NODE_TLS_REJECT_UNAUTHORIZED: '0'
-          # Standard fix for DNS lookup errors in GitHub Actions
-          UV_THREADPOOL_SIZE: '64'
-        run: node src/testShopify.js
+          # Forces the runner to show more network details
+          DEBUG: 'axios' 
+        run: |
+          echo "Checking connection to: ${{ secrets.SHOPIFY_STORE_NAME }}.myshopify.com"
+          node src/testShopify.js
