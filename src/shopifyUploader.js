@@ -1,70 +1,68 @@
 import axios from "axios";
 import fs from "fs";
 
-/**
- * Fetches a fresh 24-hour token using Client Credentials (2026 Shopify Update)
- */
-async function getFreshToken() {
-  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
-  
-  try {
-    const response = await axios.post(
-      `https://${shop}.myshopify.com/admin/oauth/access_token`,
-      {
-        grant_type: "client_credentials",
-        client_id: process.env.SHOPIFY_CLIENT_ID,
-        client_secret: process.env.SHOPIFY_CLIENT_SECRET,
-      }
-    );
-    return response.data.access_token;
-  } catch (error) {
-    console.error(`❌ Shopify Auth Failed:`, error.response?.data || error.message);
-    throw new Error("Verify your Client ID/Secret in GitHub Secrets.");
-  }
-}
-
-/**
- * Uploads image to Shopify and returns a CLEAN public URL for Instagram
- */
 export async function getShopifyImageUrl(imagePath) {
-  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
-  
-  try {
-    const token = await getFreshToken();
-    const imageData = fs.readFileSync(imagePath, { encoding: "base64" });
+  const storeName = process.env.SHOPIFY_STORE_NAME;
+  // Use the Access Token if you have it, otherwise this script expects the Admin API Token
+  const accessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || process.env.SHOPIFY_CLIENT_SECRET;
 
-    const response = await axios.post(
-      `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
-      {
-        query: `mutation fileCreate($files: [FileCreateInput!]!) {
-          fileCreate(files: $files) {
-            files { ... on MediaImage { image { url } } }
-            userErrors { field message }
+  const url = `https://${storeName}.myshopify.com/admin/api/2024-01/graphql.json`;
+
+  const query = `
+    mutation fileCreate($files: [FileCreateInput!]!) {
+      fileCreate(files: $files) {
+        files {
+          ... on GenericFile {
+            url
           }
-        }`,
-        variables: {
-          files: [{
-            alt: "FurryFable Social Content",
-            contentType: "IMAGE",
-            originalSource: `data:image/jpeg;base64,${imageData}`
-          }]
+          ... on MediaImage {
+            image {
+              url
+            }
+          }
         }
-      },
-      { headers: { "X-Shopify-Access-Token": token } }
-    );
-
-    const rawUrl = response.data.data.fileCreate.files[0]?.image?.url;
-    
-    // FIX: Strip URL parameters so Instagram doesn't reject it
-    if (rawUrl) {
-      const cleanUrl = rawUrl.split('?')[0]; 
-      console.log("📸 Shopify URL Ready (Cleaned):", cleanUrl);
-      return cleanUrl;
+        userErrors {
+          field
+          message
+        }
+      }
     }
-    
-    return null;
+  `;
+
+  try {
+    // Note: This simplified example assumes a public URL or base64. 
+    // For a real file upload, Shopify requires a staged upload process.
+    // This test checks if your AUTHENTICATION is valid.
+    const response = await axios({
+      url,
+      method: "POST",
+      headers: {
+        "X-Shopify-Access-Token": accessToken,
+        "Content-Type": "application/json",
+      },
+      data: {
+        query,
+        variables: {
+          files: [{ alt: "test", contentType: "IMAGE", originalSource: "https://placedog.net/500" }]
+        },
+      },
+    });
+
+    if (response.data.errors) {
+      console.error("❌ Shopify GraphQL Error:", JSON.stringify(response.data.errors, null, 2));
+      return null;
+    }
+
+    const file = response.data.data.fileCreate.files[0];
+    return file?.image?.url || file?.url || null;
+
   } catch (error) {
-    console.error("🛍️ Shopify Upload Error:", error.message);
+    if (error.response) {
+      console.error("❌ Shopify Auth Failed. Status:", error.response.status);
+      console.error("Check if your SHOPIFY_STORE_NAME and ACCESS_TOKEN are correct.");
+    } else {
+      console.error("❌ Network Error:", error.message);
+    }
     return null;
   }
 }
