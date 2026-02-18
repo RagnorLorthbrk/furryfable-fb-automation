@@ -18,15 +18,16 @@ jobs:
 
       - run: node src/testInstagram.js
         env:
-          GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
-          GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
-          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
-          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-          NODE_TLS_REJECT_UNAUTHORIZED: '0'
-          UV_THREADPOOL_SIZE: '64'
+              GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+              GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+              GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+              GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+              OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+              FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+              IG_USER_ID: ${{ secrets.IG_USER_ID }}
+              SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
+              SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+              NODE_TLS_REJECT_UNAUTHORIZED: '0'
+              UV_THREADPOOL_SIZE: '64'
+
 
