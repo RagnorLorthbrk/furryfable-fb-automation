@@ -12,7 +12,7 @@ export async function getShopifyImageUrl(imagePath) {
   }
 
   try {
-    // STEP 1: Request staged upload target
+    // STEP 1 — Request staged upload
     const stagedResponse = await axios.post(
       `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
       {
@@ -44,14 +44,14 @@ export async function getShopifyImageUrl(imagePath) {
       }
     );
 
-    const target = stagedResponse.data.data.stagedUploadsCreate.stagedTargets[0];
+    const target = stagedResponse.data?.data?.stagedUploadsCreate?.stagedTargets?.[0];
 
     if (!target) {
-      console.error("❌ No staged upload target returned");
+      console.error("❌ No staged upload target returned:", stagedResponse.data);
       return null;
     }
 
-    // STEP 2: Upload file to staged target
+    // STEP 2 — Upload file
     const formData = new FormData();
     target.parameters.forEach(p => formData.append(p.name, p.value));
     formData.append("file", fs.createReadStream(imagePath));
@@ -60,7 +60,7 @@ export async function getShopifyImageUrl(imagePath) {
       headers: formData.getHeaders()
     });
 
-    // STEP 3: Finalize file creation in Shopify
+    // STEP 3 — Finalize file
     const fileResponse = await axios.post(
       `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
       {
@@ -71,6 +71,10 @@ export async function getShopifyImageUrl(imagePath) {
                 ... on MediaImage {
                   image { url }
                 }
+              }
+              userErrors {
+                field
+                message
               }
             }
           }
@@ -90,10 +94,13 @@ export async function getShopifyImageUrl(imagePath) {
       }
     );
 
-    const finalUrl = fileResponse.data.data.fileCreate.files[0]?.image?.url;
+    console.log("🔎 Shopify fileCreate response:", JSON.stringify(fileResponse.data, null, 2));
+
+    const finalUrl =
+      fileResponse.data?.data?.fileCreate?.files?.[0]?.image?.url;
 
     if (!finalUrl) {
-      console.error("❌ Shopify did not return final image URL");
+      console.error("❌ Shopify did not return final image URL.");
       return null;
     }
 
