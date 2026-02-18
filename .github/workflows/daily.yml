@@ -2,20 +2,21 @@ name: FurryFable Automation
 
 on:
   schedule:
-    - cron: '0 3,9,15 * * *'
-  workflow_dispatch:
+    - cron: '0 3,9,15 * * *' # Runs 3 times a day
+  workflow_dispatch: # Allows manual run
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # Updated to v4
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4 # FIXED: Was using checkout twice
+        uses: actions/setup-node@v4 # FIXED: Now uses setup-node instead of checkout
         with:
           node-version: '18'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
@@ -30,6 +31,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          
+          # SHOPIFY & INSTAGRAM SECRETS
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
           SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
