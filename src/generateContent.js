@@ -32,13 +32,11 @@ Do NOT reference any blog.
 You are a senior social media strategist for FurryFable.
 
 Before writing:
-- Think about what pet owners genuinely experience in daily life.
-- Avoid generic advice.
-- Avoid cliché hooks like “Did you know?”
+- Think about real daily pet-owner experiences.
+- Avoid clichés like “Did you know?”
 - Vary sentence rhythm naturally.
-- Include small realistic details.
-- Avoid sounding scripted or robotic.
-- Avoid overly dramatic emotional language.
+- Include subtle, realistic details.
+- Avoid robotic or formulaic phrasing.
 
 Brand personality:
 - Warm
@@ -123,12 +121,12 @@ Return ONLY valid JSON array with exactly 3 posts:
       ]
     });
 
-    return JSON.parse(response.choices[0].message.content.trim());
+    const posts = JSON.parse(response.choices[0].message.content.trim());
+    return normalizePosts(posts);
 
   } catch (error) {
     console.warn("⚠️ OpenAI failed. Switching to Gemini...");
 
-    // 🔥 FALLBACK: Gemini (using your verified working model)
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash"
     });
@@ -140,6 +138,45 @@ Return ONLY valid JSON array with exactly 3 posts:
       .replace(/```json|```/g, "")
       .trim();
 
-    return JSON.parse(text);
+    const posts = JSON.parse(text);
+    return normalizePosts(posts);
   }
+}
+
+
+// 🔒 Defensive Normalization Layer
+function normalizePosts(posts) {
+  if (!Array.isArray(posts)) return [];
+
+  return posts.map(post => {
+
+    // Ensure hashtags always array
+    if (!Array.isArray(post.hashtags)) {
+      if (typeof post.hashtags === "string") {
+        post.hashtags = post.hashtags
+          .split(/[, ]+/)
+          .map(tag => tag.trim())
+          .filter(tag => tag.startsWith("#"));
+      } else {
+        post.hashtags = [];
+      }
+    }
+
+    // Ensure caption exists
+    if (typeof post.caption !== "string") {
+      post.caption = "";
+    }
+
+    // Ensure engagementComment exists
+    if (typeof post.engagementComment !== "string") {
+      post.engagementComment = "";
+    }
+
+    // Ensure imagePrompt exists
+    if (typeof post.imagePrompt !== "string") {
+      post.imagePrompt = "";
+    }
+
+    return post;
+  });
 }
