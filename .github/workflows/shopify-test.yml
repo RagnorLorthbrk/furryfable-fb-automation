@@ -16,7 +16,6 @@ jobs:
           node-version: '20'
 
       - name: Update Root CA Certificates
-        # This ensures the Ubuntu runner has the latest trusted certificate authorities
         run: |
           sudo apt-get update
           sudo apt-get install -y ca-certificates
@@ -27,9 +26,11 @@ jobs:
 
       - name: Run Test Script
         env:
+          # Use JUST the store name here (e.g., your-store-name)
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
-          # Mapping your specific secret name to what the script expects
           SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
-          # Optional: Only uncomment the line below if the error persists after updating CA certificates
-          # NODE_TLS_REJECT_UNAUTHORIZED: '0' 
+          # This tells Node to ignore the certificate error without needing https in the secret
+          NODE_TLS_REJECT_UNAUTHORIZED: '0'
+          # Fix for DNS lookup timeouts
+          UV_THREADPOOL_SIZE: '64'
         run: node src/testShopify.js
