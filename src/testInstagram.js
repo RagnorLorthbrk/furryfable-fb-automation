@@ -13,10 +13,10 @@ async function run() {
   console.log("🚀 IG FULL PIPELINE TEST STARTED");
 
   try {
-    // 1️⃣ Load history so AI avoids repetition
+    // 1️⃣ Load history (prevents repetitive AI content)
     const history = await getSheetRows();
 
-    // 2️⃣ Generate only 1 post
+    // 2️⃣ Generate only ONE post
     const posts = await generatePosts(history, null);
     const post = posts[0];
 
@@ -33,7 +33,12 @@ async function run() {
       process.exit(1);
     }
 
-    console.log("✅ Shopify CDN URL:", publicUrl);
+    console.log("✅ Shopify URL ready:", publicUrl);
+
+    // IMPORTANT: Wait before first IG attempt
+    console.log("⏳ Waiting 60 seconds before first Instagram attempt...");
+    await sleep(60000);
+
     console.log("📸 Starting Instagram publish attempts (1 min spacing)...");
 
     let igId = null;
@@ -50,7 +55,7 @@ async function run() {
 
       if (attempt < 5) {
         console.log("⏳ Waiting 60 seconds before next attempt...");
-        await sleep(60000); // 1 minute wait
+        await sleep(60000);
       }
     }
 
