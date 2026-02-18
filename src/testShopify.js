@@ -1,27 +1,23 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { getShopifyImageUrl } from "./shopifyUploader.js";
-import fs from "fs";
 
-async function testUpload() {
+async function test() {
   console.log("🔍 Starting Shopify Connection Test...");
-  console.log("Store:", process.env.SHOPIFY_STORE_NAME);
-
-  const testImagePath = "./test-pet.jpg";
-  if (!fs.existsSync(testImagePath)) {
-    fs.writeFileSync(testImagePath, "fake-image-data");
-  }
+  const testImage = "./test-pet.jpg"; 
 
   try {
-    const url = await getShopifyImageUrl(testImagePath);
+    const url = await getShopifyImageUrl(testImage);
     if (url) {
-      console.log("🔥 SUCCESS! Shopify URL:", url);
+      console.log("✅ SUCCESS! Generated URL:", url);
     } else {
-      console.log("❌ FAILED: The uploader returned null. Check logs above.");
+      console.log("❌ FAILED: The uploader returned null. Check shopifyUploader.js logic.");
+      process.exit(1); 
     }
   } catch (err) {
     console.error("❌ CRITICAL ERROR:", err.message);
+    process.exit(1);
   }
 }
 
-testUpload();
+test();
