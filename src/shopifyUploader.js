@@ -1,5 +1,6 @@
 import axios from "axios";
 import https from "https";
+import fs from "fs";
 
 const agent = new https.Agent({ rejectUnauthorized: false });
 
@@ -10,32 +11,49 @@ export async function getShopifyImageUrl(imagePath) {
     .replace(/\.myshopify\.com\/?.*$/, "")
     .trim();
   
-  // Use the shpat_ token directly
-  const accessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || process.env.SHOPIFY_CLIENT_SECRET;
+  // Uses your verified token from the successful test
+  const accessToken = process.env.SHOPIFY_CLIENT_SECRET;
 
   try {
-    console.log(`🔍 Testing direct connection to: ${shop}.myshopify.com`);
+    const imageData = fs.readFileSync(imagePath, { encoding: "base64" });
 
-    // Direct test call to Shopify Admin API
-    const response = await axios.get(
-      `https://${shop}.myshopify.com/admin/api/2024-01/shop.json`,
+    // This mutation uploads the image to Shopify Files
+    const response = await axios.post(
+      `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
+      {
+        query: `mutation fileCreate($files: [FileCreateInput!]!) {
+          fileCreate(files: $files) {
+            files { ... on MediaImage { image { url } } }
+            userErrors { field message }
+          }
+        }`,
+        variables: {
+          files: [{
+            alt: "FurryFable Social Content",
+            contentType: "IMAGE",
+            originalSource: `data:image/jpeg;base64,${imageData}`
+          }]
+        }
+      },
       { 
         headers: { 'X-Shopify-Access-Token': accessToken },
         httpsAgent: agent 
       }
     );
 
-    console.log(`✅ SUCCESS! Connected to store: ${response.data.shop.name}`);
-    return "https://cdn.shopify.com/success-placeholder.jpg";
+    const url = response.data.data.fileCreate.files[0]?.image?.url;
+    
+    if (url) {
+      const cleanUrl = url.split('?')[0]; // Clean for Instagram
+      console.log("📸 Shopify URL Ready:", cleanUrl);
+      return cleanUrl;
+    }
+    
+    console.error("❌ Shopify returned no URL. Errors:", response.data.data.fileCreate.userErrors);
+    return null;
 
   } catch (error) {
-    console.error("❌ Shopify Connection Failed.");
-    if (error.response) {
-      console.error(`Status: ${error.response.status}`);
-      console.error("Details:", JSON.stringify(error.response.data, null, 2));
-    } else {
-      console.error("Error Message:", error.message);
-    }
+    console.error("❌ Shopify Upload Failed.");
     return null;
   }
 }
