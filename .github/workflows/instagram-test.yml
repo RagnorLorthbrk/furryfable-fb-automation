@@ -1,0 +1,34 @@
+name: Instagram Standalone Test
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+jobs:
+  test-ig:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Using Node 20 as per your successful test
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run IG Test
+        run: node src/postToInstagramOnly.js
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          
+          # Shopify Auth (Using your verified test mapping)
+          SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
+          SHOPIFY_ADMIN_API_ACCESS_TOKEN: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          
+          # SSL and Performance Fixes
+          NODE_TLS_REJECT_UNAUTHORIZED: '0'
+          UV_THREADPOOL_SIZE: '64'
