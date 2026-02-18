@@ -15,15 +15,9 @@ async function run() {
   const history = await getSheetRows();
   let blog = await getLatestBlog();
 
-  // STRENGTHENED DUPLICATE CHECK
-  if (blog) {
-    const isDuplicate = history.some(row => 
-      row.some(cell => String(cell).toLowerCase().includes(blog.link.toLowerCase()))
-    );
-    if (isDuplicate) {
-      console.log(`⏭️ Blog "${blog.title}" already posted. Skipping.`);
-      blog = null;
-    }
+  if (blog && history.some(row => row.some(cell => String(cell).includes(blog.link)))) {
+    console.log(`⏭️ Blog "${blog.title}" already shared. Skipping.`);
+    blog = null;
   }
 
   const posts = await generatePosts(history, blog);
@@ -32,29 +26,40 @@ async function run() {
     const { imagePath, provider } = await generateImage(post);
     const fullCaption = `${post.caption}\n\n${post.hashtags}`;
 
-    // 1. Facebook Post
+    // 1. Get Public URL via Shopify
+    const publicUrl = await getShopifyImageUrl(imagePath);
+
+    // 2. Post to Facebook
     const fbPostId = await postToFacebook(fullCaption, imagePath);
     console.log(`✅ FB Live: ${fbPostId}`);
 
-    // 2. Shopify & Instagram (With Retry Logic)
-    try {
-      const publicUrl = await getShopifyImageUrl(imagePath);
-      if (publicUrl) {
-        await sleep(5000); // Wait for Shopify to fully process the image
+    // 3. Post to Instagram (With Debugging)
+    if (publicUrl && process.env.IG_USER_ID) {
+      console.log(`🔍 DEBUG: Attempting IG Post with URL: ${publicUrl}`);
+      try {
+        await sleep(10000); // 10s wait for Shopify to finish processing
         const igId = await postToInstagram(fullCaption, publicUrl);
-        console.log(`📸 IG Live: ${igId}`);
+        if (igId) {
+          console.log(`📸 IG Live: ${igId}`);
+        } else {
+          console.log(`❌ IG Post failed silently.`);
+        }
+      } catch (err) {
+        console.error(`❌ IG API Error:`, err.response?.data || err.message);
       }
-    } catch (e) { console.error("⚠️ IG Failed."); }
+    } else {
+      console.log(`⚠️ IG SKIP: ${!publicUrl ? 'Shopify URL missing' : 'IG_USER_ID missing'}`);
+    }
 
-    // 3. FB Comment
+    // 4. Facebook Comment
     try {
       await axios.post(`https://graph.facebook.com/v24.0/${fbPostId}/comments`, {
         message: post.engagementComment,
         access_token: process.env.FB_PAGE_ACCESS_TOKEN
       });
-    } catch (e) { console.warn("⚠️ Comment failed."); }
+    } catch (e) { console.warn("⚠️ FB Comment failed"); }
 
-    // 4. Log to Sheets
+    // 5. Log to Sheets
     await appendRow({
       date: new Date().toISOString(),
       ...post,
@@ -63,7 +68,7 @@ async function run() {
       similarityScore: 0
     });
 
-    await sleep(15000); // 15s break between different posts
+    await sleep(5000);
   }
 }
 
