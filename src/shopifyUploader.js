@@ -4,20 +4,39 @@ import FormData from "form-data";
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function getShopifyImageUrl(imagePath) {
+async function getFreshShopifyToken() {
   const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
-  const accessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
 
-  // 🔍 DEBUG (temporary)
-  console.log("🔎 Using shop:", shop);
-  console.log("🔎 Token prefix:", accessToken ? accessToken.substring(0, 15) : "NO TOKEN");
-
-  if (!accessToken) {
-    console.error("❌ Missing SHOPIFY_ADMIN_API_ACCESS_TOKEN");
-    return null;
+  if (!process.env.SHOPIFY_CLIENT_ID || !process.env.SHOPIFY_CLIENT_SECRET) {
+    throw new Error("Missing SHOPIFY_CLIENT_ID or SHOPIFY_CLIENT_SECRET");
   }
 
+  const response = await axios.post(
+    `https://${shop}.myshopify.com/admin/oauth/access_token`,
+    {
+      client_id: process.env.SHOPIFY_CLIENT_ID,
+      client_secret: process.env.SHOPIFY_CLIENT_SECRET,
+      grant_type: "client_credentials"
+    }
+  );
+
+  if (!response.data?.access_token) {
+    throw new Error("Failed to retrieve Shopify access token");
+  }
+
+  console.log("🔑 Fresh Shopify token acquired");
+  return response.data.access_token;
+}
+
+export async function getShopifyImageUrl(imagePath) {
+  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
+
   try {
+    const accessToken = await getFreshShopifyToken();
+
+    console.log("🔎 Using shop:", shop);
+    console.log("🔎 Token prefix:", accessToken.substring(0, 15));
+
     // STEP 1 — Request staged upload
     const stagedResponse = await axios.post(
       `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
