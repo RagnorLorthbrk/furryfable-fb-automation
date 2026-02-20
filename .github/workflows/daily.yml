@@ -1,4 +1,4 @@
-name: Run Automation
+name: FurryFable Automation
 
 on:
   schedule:
