@@ -16,7 +16,7 @@ export async function getSheetRows() {
   const sheets = google.sheets({ version: "v4", auth });
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A2:M1000`,
+    range: `${SHEET_NAME}!A2:O1000`, // extended to column O
   });
   return response.data.values || [];
 }
@@ -25,30 +25,31 @@ export async function appendRow(rowData) {
   const auth = getAuth();
   const sheets = google.sheets({ version: "v4", auth });
 
-  // FIX: Convert hashtags array into a space-separated string
-  const hashtagsString = Array.isArray(rowData.hashtags) 
-    ? rowData.hashtags.join(" ") 
+  const hashtagsString = Array.isArray(rowData.hashtags)
+    ? rowData.hashtags.join(" ")
     : rowData.hashtags || "";
 
   const row = [
-    rowData.date || new Date().toISOString(),
-    rowData.topic || "",
-    rowData.angle || "",
-    rowData.postType || "",
-    rowData.breed || "",
-    rowData.furColor || "",
-    rowData.caption || "",
-    hashtagsString, // Now sending text, not a list
-    rowData.altText || "",
-    rowData.imagePrompt || "",
-    rowData.imageProvider || "",
-    rowData.fbPostId || "",
-    rowData.similarityScore || 0,
+    rowData.date || new Date().toISOString(), // A
+    rowData.topic || "",                     // B
+    rowData.angle || "",                     // C
+    rowData.postType || "",                  // D
+    rowData.breed || "",                     // E
+    rowData.furColor || "",                  // F
+    rowData.caption || "",                   // G
+    hashtagsString,                          // H
+    rowData.altText || "",                   // I
+    rowData.imagePrompt || "",               // J
+    rowData.imageProvider || "",             // K
+    rowData.fbPostId || "",                  // L
+    rowData.similarityScore || 0,            // M
+    rowData.facebookStatus || "",            // N (NEW)
+    rowData.instagramStatus || "",           // O (NEW)
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A:M`,
+    range: `${SHEET_NAME}!A:O`,
     valueInputOption: "USER_ENTERED",
     resource: { values: [row] },
   });
