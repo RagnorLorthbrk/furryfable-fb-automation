@@ -50,7 +50,6 @@ async function run() {
     }
   }
 
-  // 🔥 If still duplicate after 3 attempts → force first generated
   if (!post) {
     console.log("⚠️ All attempts produced duplicates. Forcing publish.");
     const fallbackPosts = await generatePosts(history, blog);
@@ -66,10 +65,25 @@ async function run() {
 
     const publicUrl = await getShopifyImageUrl(imagePath);
 
-    const fbPostId = await postToFacebook(fullCaption, imagePath);
-    console.log(`✅ FB Live: ${fbPostId}`);
+    // -----------------------
+    // 📘 FACEBOOK POST
+    // -----------------------
+    let fbPostId = null;
+    let facebookStatus = "❌";
 
+    try {
+      fbPostId = await postToFacebook(fullCaption, imagePath);
+      console.log(`✅ FB Live: ${fbPostId}`);
+      facebookStatus = "✅";
+    } catch (err) {
+      console.error("❌ Facebook Post Failed:", err.message);
+    }
+
+    // -----------------------
+    // 📸 INSTAGRAM POST
+    // -----------------------
     let igId = null;
+    let instagramStatus = "❌";
 
     if (publicUrl && process.env.IG_USER_ID) {
       try {
@@ -79,6 +93,7 @@ async function run() {
 
         if (igId) {
           console.log(`📸 IG Live: ${igId}`);
+          instagramStatus = "✅";
         } else {
           console.log("❌ IG Post failed.");
         }
@@ -87,21 +102,27 @@ async function run() {
       }
     }
 
-    // FB Comment
-    try {
-      await axios.post(
-        `https://graph.facebook.com/v24.0/${fbPostId}/comments`,
-        {
-          message: post.engagementComment,
-          access_token: process.env.FB_PAGE_ACCESS_TOKEN
-        }
-      );
-      console.log("💬 FB Comment added");
-    } catch (err) {
-      console.warn("⚠️ FB Comment failed:", err.response?.data || err.message);
+    // -----------------------
+    // 💬 FACEBOOK COMMENT
+    // -----------------------
+    if (fbPostId) {
+      try {
+        await axios.post(
+          `https://graph.facebook.com/v24.0/${fbPostId}/comments`,
+          {
+            message: post.engagementComment,
+            access_token: process.env.FB_PAGE_ACCESS_TOKEN
+          }
+        );
+        console.log("💬 FB Comment added");
+      } catch (err) {
+        console.warn("⚠️ FB Comment failed:", err.response?.data || err.message);
+      }
     }
 
-    // IG Comment
+    // -----------------------
+    // 💬 INSTAGRAM COMMENT
+    // -----------------------
     if (igId) {
       try {
         await axios.post(
@@ -117,6 +138,9 @@ async function run() {
       }
     }
 
+    // -----------------------
+    // 📊 LOG TO SHEET
+    // -----------------------
     await appendRow({
       date: new Date().toISOString(),
       topic: post.topic,
@@ -130,7 +154,9 @@ async function run() {
       imagePrompt: post.imagePrompt,
       imageProvider: provider,
       fbPostId,
-      similarityScore: 0
+      similarityScore: 0,
+      facebookStatus,
+      instagramStatus
     });
 
     console.log("📊 Logged to Google Sheets");
