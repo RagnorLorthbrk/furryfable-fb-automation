@@ -5,18 +5,29 @@ import FormData from "form-data";
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function getShopifyImageUrl(imagePath) {
-  const shop = process.env.SHOPIFY_STORE_NAME.replace(".myshopify.com", "").trim();
-  const accessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+  // Cleans the store name to ensure it's just the handle (e.g., "vfsn10-30")
+  const rawShop = process.env.SHOPIFY_STORE_NAME || "";
+  const shop = rawShop.replace(".myshopify.com", "").replace(/^https?:\/\//, "").trim();
+  
+  // Trimming the token is crucial; hidden spaces in GitHub Secrets often cause "Invalid API Key" errors
+  const accessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN?.trim();
 
   if (!accessToken) {
     console.error("❌ Missing SHOPIFY_ADMIN_API_ACCESS_TOKEN");
     return null;
   }
 
+  if (!shop) {
+    console.error("❌ Missing SHOPIFY_STORE_NAME");
+    return null;
+  }
+
+  const shopifyUrl = `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`;
+
   try {
     // STEP 1 — Request staged upload
     const stagedResponse = await axios.post(
-      `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
+      shopifyUrl,
       {
         query: `
           mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
@@ -26,12 +37,13 @@ export async function getShopifyImageUrl(imagePath) {
                 resourceUrl
                 parameters { name value }
               }
+              userErrors { field message }
             }
           }
         `,
         variables: {
           input: [{
-            filename: "pet-post.png",
+            filename: `pet-post-${Date.now()}.png`,
             mimeType: "image/png",
             resource: "IMAGE",
             httpMethod: "POST"
@@ -46,10 +58,17 @@ export async function getShopifyImageUrl(imagePath) {
       }
     );
 
-    const target = stagedResponse.data?.data?.stagedUploadsCreate?.stagedTargets?.[0];
+    const stagedData = stagedResponse.data?.data?.stagedUploadsCreate;
+    
+    if (stagedData?.userErrors?.length > 0) {
+      console.error("❌ Shopify GraphQL User Errors:", stagedData.userErrors);
+      return null;
+    }
+
+    const target = stagedData?.stagedTargets?.[0];
 
     if (!target) {
-      console.error("❌ No staged upload target returned:", stagedResponse.data);
+      console.error("❌ No staged upload target returned. Full Response:", JSON.stringify(stagedResponse.data));
       return null;
     }
 
@@ -66,7 +85,7 @@ export async function getShopifyImageUrl(imagePath) {
 
     // STEP 3 — Create Shopify file (permanent)
     const fileCreateResponse = await axios.post(
-      `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
+      shopifyUrl,
       {
         query: `
           mutation fileCreate($files: [FileCreateInput!]!) {
@@ -104,7 +123,7 @@ export async function getShopifyImageUrl(imagePath) {
     const fileNode = fileCreateResponse.data?.data?.fileCreate?.files?.[0];
 
     if (!fileNode?.id) {
-      console.error("❌ fileCreate failed:", fileCreateResponse.data);
+      console.error("❌ fileCreate failed:", JSON.stringify(fileCreateResponse.data));
       return null;
     }
 
@@ -120,7 +139,7 @@ export async function getShopifyImageUrl(imagePath) {
       await sleep(5000);
 
       const pollResponse = await axios.post(
-        `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
+        shopifyUrl,
         {
           query: `
             query getFile {
@@ -151,11 +170,15 @@ export async function getShopifyImageUrl(imagePath) {
     }
 
     console.log("✅ Permanent CDN URL ready:", finalUrl);
-
     return finalUrl.split("?")[0];
 
   } catch (error) {
-    console.error("❌ Shopify Upload Error:", error.response?.data || error.message);
+    if (error.response) {
+      console.error("❌ Shopify API Error Status:", error.response.status);
+      console.error("❌ Shopify API Error Data:", JSON.stringify(error.response.data));
+    } else {
+      console.error("❌ Shopify Upload Error:", error.message);
+    }
     return null;
   }
 }
