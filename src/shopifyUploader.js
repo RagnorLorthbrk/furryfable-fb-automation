@@ -16,7 +16,7 @@ export async function getShopifyImageUrl(imagePath) {
   try {
     // STEP 1 — Request staged upload
     const stagedResponse = await axios.post(
-      `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
+      `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
       {
         query: `
           mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
@@ -66,7 +66,7 @@ export async function getShopifyImageUrl(imagePath) {
 
     // STEP 3 — Create Shopify file (permanent)
     const fileCreateResponse = await axios.post(
-      `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
+      `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
       {
         query: `
           mutation fileCreate($files: [FileCreateInput!]!) {
@@ -120,7 +120,7 @@ export async function getShopifyImageUrl(imagePath) {
       await sleep(5000);
 
       const pollResponse = await axios.post(
-        `https://${shop}.myshopify.com/admin/api/2024-01/graphql.json`,
+        `https://${shop}.myshopify.com/admin/api/2026-01/graphql.json`,
         {
           query: `
             query getFile {
