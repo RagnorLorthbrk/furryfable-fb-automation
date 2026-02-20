@@ -14,116 +14,129 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function run() {
   console.log("🚀 Starting FurryFable Automation");
 
-  // 1️⃣ Load Google Sheets history
   const history = await getSheetRows();
 
-  // 2️⃣ Fetch latest blog
+  const previousTopics = history
+    .map(row => (row[1] || "").toString().trim().toLowerCase())
+    .filter(Boolean);
+
   let blog = await getLatestBlog();
 
-  // 3️⃣ Skip blog if already posted
   if (blog && history.some(row => row.some(cell => String(cell).includes(blog.link)))) {
-    console.log(`⏭️ Blog "${blog.title}" already shared. Skipping.`);
+    console.log(`⏭️ Blog "${blog.title}" already shared. Skipping blog.`);
     blog = null;
   }
 
-  // 4️⃣ Generate 3 posts
-  const posts = await generatePosts(history, blog);
+  let post = null;
+  let attempts = 0;
 
-  for (const post of posts) {
-    try {
-      console.log("--------------------------------------------------");
-      console.log(`📝 Creating post about: ${post.topic}`);
+  while (!post && attempts < 3) {
+    attempts++;
+    console.log(`🔄 Generating posts (Attempt ${attempts})...`);
 
-      // 🖼 Generate image ONCE
-      const { imagePath, provider } = await generateImage(post);
-      const fullCaption = `${post.caption}\n\n${post.hashtags.join(" ")}`;
+    const posts = await generatePosts(history, blog);
 
-      // ☁ Upload to Shopify for IG
-      const publicUrl = await getShopifyImageUrl(imagePath);
+    if (!posts || posts.length === 0) continue;
 
-      if (!publicUrl) {
-        console.error("❌ Shopify upload failed. Skipping IG.");
+    for (const candidate of posts) {
+      const topicNormalized = (candidate.topic || "").trim().toLowerCase();
+
+      if (!previousTopics.includes(topicNormalized)) {
+        post = candidate;
+        break;
+      } else {
+        console.log(`⚠️ Duplicate topic detected: ${candidate.topic}`);
       }
+    }
+  }
 
-      // 📘 Post to Facebook
-      const fbPostId = await postToFacebook(fullCaption, imagePath);
-      console.log(`✅ FB Live: ${fbPostId}`);
+  // 🔥 If still duplicate after 3 attempts → force first generated
+  if (!post) {
+    console.log("⚠️ All attempts produced duplicates. Forcing publish.");
+    const fallbackPosts = await generatePosts(history, blog);
+    post = fallbackPosts[0];
+  }
 
-      // 📸 Post to Instagram
-      let igId = null;
+  try {
+    console.log("--------------------------------------------------");
+    console.log(`📝 Creating post about: ${post.topic}`);
 
-      if (publicUrl && process.env.IG_USER_ID) {
-        try {
-          console.log(`🔍 Attempting IG Post with URL: ${publicUrl}`);
-          await sleep(15000); // slight delay before IG call
-          igId = await postToInstagram(fullCaption, publicUrl);
+    const { imagePath, provider } = await generateImage(post);
+    const fullCaption = `${post.caption}\n\n${post.hashtags.join(" ")}`;
 
-          if (igId) {
-            console.log(`📸 IG Live: ${igId}`);
-          } else {
-            console.log("❌ IG Post failed.");
-          }
-        } catch (err) {
-          console.error("❌ IG API Error:", err.response?.data || err.message);
+    const publicUrl = await getShopifyImageUrl(imagePath);
+
+    const fbPostId = await postToFacebook(fullCaption, imagePath);
+    console.log(`✅ FB Live: ${fbPostId}`);
+
+    let igId = null;
+
+    if (publicUrl && process.env.IG_USER_ID) {
+      try {
+        console.log(`🔍 Attempting IG Post with URL: ${publicUrl}`);
+        await sleep(15000);
+        igId = await postToInstagram(fullCaption, publicUrl);
+
+        if (igId) {
+          console.log(`📸 IG Live: ${igId}`);
+        } else {
+          console.log("❌ IG Post failed.");
         }
+      } catch (err) {
+        console.error("❌ IG API Error:", err.response?.data || err.message);
       }
+    }
 
-      // 💬 Add Facebook Comment
+    // FB Comment
+    try {
+      await axios.post(
+        `https://graph.facebook.com/v24.0/${fbPostId}/comments`,
+        {
+          message: post.engagementComment,
+          access_token: process.env.FB_PAGE_ACCESS_TOKEN
+        }
+      );
+      console.log("💬 FB Comment added");
+    } catch (err) {
+      console.warn("⚠️ FB Comment failed:", err.response?.data || err.message);
+    }
+
+    // IG Comment
+    if (igId) {
       try {
         await axios.post(
-          `https://graph.facebook.com/v24.0/${fbPostId}/comments`,
+          `https://graph.facebook.com/v24.0/${igId}/comments`,
           {
             message: post.engagementComment,
             access_token: process.env.FB_PAGE_ACCESS_TOKEN
           }
         );
-        console.log("💬 FB Comment added");
+        console.log("💬 IG Comment added");
       } catch (err) {
-        console.warn("⚠️ FB Comment failed:", err.response?.data || err.message);
+        console.warn("⚠️ IG Comment failed:", err.response?.data || err.message);
       }
-
-      // 💬 Add Instagram Comment
-      if (igId) {
-        try {
-          await axios.post(
-            `https://graph.facebook.com/v24.0/${igId}/comments`,
-            {
-              message: post.engagementComment,
-              access_token: process.env.FB_PAGE_ACCESS_TOKEN
-            }
-          );
-          console.log("💬 IG Comment added");
-        } catch (err) {
-          console.warn("⚠️ IG Comment failed:", err.response?.data || err.message);
-        }
-      }
-
-      // 📊 Log to Google Sheets
-      await appendRow({
-        date: new Date().toISOString(),
-        topic: post.topic,
-        angle: post.angle,
-        postType: post.postType,
-        breed: post.breed || "",
-        furColor: post.furColor || "",
-        caption: post.caption,
-        hashtags: post.hashtags.join(" "),
-        altText: "",
-        imagePrompt: post.imagePrompt,
-        imageProvider: provider,
-        fbPostId,
-        similarityScore: 0
-      });
-
-      console.log("📊 Logged to Google Sheets");
-
-      // 🔥 IMPORTANT FIX — Increase delay between posts
-      console.log("⏳ Waiting 30 seconds before next post...");
-      await sleep(30000);
-
-    } catch (err) {
-      console.error("❌ Error inside post loop:", err.message);
     }
+
+    await appendRow({
+      date: new Date().toISOString(),
+      topic: post.topic,
+      angle: post.angle,
+      postType: post.postType,
+      breed: post.breed || "",
+      furColor: post.furColor || "",
+      caption: post.caption,
+      hashtags: post.hashtags.join(" "),
+      altText: "",
+      imagePrompt: post.imagePrompt,
+      imageProvider: provider,
+      fbPostId,
+      similarityScore: 0
+    });
+
+    console.log("📊 Logged to Google Sheets");
+
+  } catch (err) {
+    console.error("❌ Error during post creation:", err.message);
   }
 
   console.log("🎉 Automation completed.");
