@@ -44,8 +44,6 @@ async function run() {
       if (!previousTopics.includes(topicNormalized)) {
         post = candidate;
         break;
-      } else {
-        console.log(`⚠️ Duplicate topic detected: ${candidate.topic}`);
       }
     }
   }
@@ -61,41 +59,48 @@ async function run() {
     console.log(`📝 Creating post about: ${post.topic}`);
 
     const { imagePath, provider } = await generateImage(post);
-    const fullCaption = `${post.caption}\n\n${post.hashtags.join(" ")}`;
+
+    // 🔥 Detect if this is blog-based post
+    const isBlogPost = blog && post.caption.includes(blog.title);
+
+    // 🔥 Remove blog link from caption if present
+    let cleanCaption = post.caption;
+    if (blog) {
+      cleanCaption = cleanCaption.replace(blog.link, "").trim();
+    }
+
+    const fullCaption = `${cleanCaption}\n\n${post.hashtags.join(" ")}`;
 
     const publicUrl = await getShopifyImageUrl(imagePath);
 
     // -----------------------
-    // 📘 FACEBOOK POST
+    // FACEBOOK
     // -----------------------
     let fbPostId = null;
     let facebookStatus = "❌";
 
     try {
       fbPostId = await postToFacebook(fullCaption, imagePath);
-      console.log(`✅ FB Live: ${fbPostId}`);
       facebookStatus = "✅";
+      console.log(`✅ FB Live: ${fbPostId}`);
     } catch (err) {
       console.error("❌ Facebook Post Failed:", err.message);
     }
 
     // -----------------------
-    // 📸 INSTAGRAM POST
+    // INSTAGRAM
     // -----------------------
     let igId = null;
     let instagramStatus = "❌";
 
     if (publicUrl && process.env.IG_USER_ID) {
       try {
-        console.log(`🔍 Attempting IG Post with URL: ${publicUrl}`);
         await sleep(15000);
         igId = await postToInstagram(fullCaption, publicUrl);
 
         if (igId) {
-          console.log(`📸 IG Live: ${igId}`);
           instagramStatus = "✅";
-        } else {
-          console.log("❌ IG Post failed.");
+          console.log(`📸 IG Live: ${igId}`);
         }
       } catch (err) {
         console.error("❌ IG API Error:", err.response?.data || err.message);
@@ -103,14 +108,20 @@ async function run() {
     }
 
     // -----------------------
-    // 💬 FACEBOOK COMMENT
+    // FIRST COMMENT (Blog Link if Blog Post)
     // -----------------------
+    let firstComment = post.engagementComment;
+
+    if (isBlogPost && blog) {
+      firstComment = `${post.engagementComment}\n\nRead full blog here:\n${blog.link}`;
+    }
+
     if (fbPostId) {
       try {
         await axios.post(
           `https://graph.facebook.com/v24.0/${fbPostId}/comments`,
           {
-            message: post.engagementComment,
+            message: firstComment,
             access_token: process.env.FB_PAGE_ACCESS_TOKEN
           }
         );
@@ -120,15 +131,12 @@ async function run() {
       }
     }
 
-    // -----------------------
-    // 💬 INSTAGRAM COMMENT
-    // -----------------------
     if (igId) {
       try {
         await axios.post(
           `https://graph.facebook.com/v24.0/${igId}/comments`,
           {
-            message: post.engagementComment,
+            message: firstComment,
             access_token: process.env.FB_PAGE_ACCESS_TOKEN
           }
         );
@@ -139,7 +147,7 @@ async function run() {
     }
 
     // -----------------------
-    // 📊 LOG TO SHEET
+    // LOG TO SHEET
     // -----------------------
     await appendRow({
       date: new Date().toISOString(),
@@ -148,7 +156,7 @@ async function run() {
       postType: post.postType,
       breed: post.breed || "",
       furColor: post.furColor || "",
-      caption: post.caption,
+      caption: cleanCaption,
       hashtags: post.hashtags.join(" "),
       altText: "",
       imagePrompt: post.imagePrompt,
