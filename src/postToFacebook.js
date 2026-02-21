@@ -15,10 +15,13 @@ export async function postToFacebook(caption, imagePath) {
     form,
     { headers: form.getHeaders() }
   );
+
   return response.data.id;
 }
 
-export async function postToInstagram(caption, publicImageUrl) {
+
+// 🔥 UPDATED — now supports altText
+export async function postToInstagram(caption, publicImageUrl, altText = "") {
   const IG_ID = process.env.IG_USER_ID;
   const TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 
@@ -29,6 +32,7 @@ export async function postToInstagram(caption, publicImageUrl) {
       {
         image_url: publicImageUrl,
         caption: caption,
+        accessibility_caption: altText, // ✅ ALT TEXT ADDED
         access_token: TOKEN
       }
     );
