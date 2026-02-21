@@ -96,7 +96,7 @@ async function run() {
     if (publicUrl && process.env.IG_USER_ID) {
       try {
         await sleep(15000);
-        igId = await postToInstagram(fullCaption, publicUrl);
+        igId = await postToInstagram(fullCaption, publicUrl, post.altText);
 
         if (igId) {
           instagramStatus = "✅";
