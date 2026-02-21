@@ -158,7 +158,7 @@ async function run() {
       furColor: post.furColor || "",
       caption: cleanCaption,
       hashtags: post.hashtags.join(" "),
-      altText: "",
+      altText: post.altText || "",
       imagePrompt: post.imagePrompt,
       imageProvider: provider,
       fbPostId,
