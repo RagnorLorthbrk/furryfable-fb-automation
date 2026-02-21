@@ -13,6 +13,20 @@ export async function generatePosts(history, blog) {
     .slice(-15)
     .join(", ");
 
+  // 🌎 US + Canada Seasonal Awareness
+  const month = new Date().getUTCMonth() + 1;
+  let seasonContext = "";
+
+  if ([12, 1, 2].includes(month)) {
+    seasonContext = "It is currently winter in the United States and Canada.";
+  } else if ([3, 4, 5].includes(month)) {
+    seasonContext = "It is currently spring in the United States and Canada.";
+  } else if ([6, 7, 8].includes(month)) {
+    seasonContext = "It is currently summer in the United States and Canada.";
+  } else {
+    seasonContext = "It is currently autumn in the United States and Canada.";
+  }
+
   const blogContext = blog
     ? `
 There is a new blog post:
@@ -30,6 +44,10 @@ Do NOT reference any blog.
 
   const prompt = `
 You are a senior social media strategist for FurryFable.
+
+${seasonContext}
+All seasonal references MUST match this season.
+Do NOT reference any other season.
 
 Before writing:
 - Think about real daily pet-owner experiences.
@@ -103,9 +121,17 @@ Return ONLY valid JSON array with exactly 3 posts:
     caption,
     hashtags,
     engagementComment,
-    imagePrompt
+    imagePrompt,
+    altText
   }
 ]
+
+altText must:
+- Clearly describe the image for accessibility
+- Be objective and descriptive
+- Avoid hashtags
+- Avoid emojis
+- Be under 200 characters
 `;
 
   // 🔥 PRIMARY: OpenAI
@@ -150,7 +176,6 @@ function normalizePosts(posts) {
 
   return posts.map(post => {
 
-    // Ensure hashtags always array
     if (!Array.isArray(post.hashtags)) {
       if (typeof post.hashtags === "string") {
         post.hashtags = post.hashtags
@@ -162,19 +187,20 @@ function normalizePosts(posts) {
       }
     }
 
-    // Ensure caption exists
     if (typeof post.caption !== "string") {
       post.caption = "";
     }
 
-    // Ensure engagementComment exists
     if (typeof post.engagementComment !== "string") {
       post.engagementComment = "";
     }
 
-    // Ensure imagePrompt exists
     if (typeof post.imagePrompt !== "string") {
       post.imagePrompt = "";
+    }
+
+    if (typeof post.altText !== "string") {
+      post.altText = "";
     }
 
     return post;
