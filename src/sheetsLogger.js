@@ -16,7 +16,7 @@ export async function getSheetRows() {
   const sheets = google.sheets({ version: "v4", auth });
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A2:O1000`, // extended to column O
+    range: `${SHEET_NAME}!A2:Q1000`,
   });
   return response.data.values || [];
 }
@@ -43,13 +43,15 @@ export async function appendRow(rowData) {
     rowData.imageProvider || "",             // K
     rowData.fbPostId || "",                  // L
     rowData.similarityScore || 0,            // M
-    rowData.facebookStatus || "",            // N (NEW)
-    rowData.instagramStatus || "",           // O (NEW)
+    rowData.facebookStatus || "",            // N
+    rowData.instagramStatus || "",           // O
+    rowData.pinterestStatus || "",           // P
+    rowData.linkedinStatus || "",            // Q
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A:O`,
+    range: `${SHEET_NAME}!A:Q`,
     valueInputOption: "USER_ENTERED",
     resource: { values: [row] },
   });

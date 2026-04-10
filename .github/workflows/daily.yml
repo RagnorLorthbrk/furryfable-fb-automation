@@ -1,8 +1,8 @@
-name: FurryFable Automation
+name: FurryFable Multi-Channel Automation
 
 on:
   schedule:
-    - cron: "0 4,10,16 * * *"   # Runs 3 times per day (adjust if needed)
+    - cron: "0 4,10,16 * * *"   # Runs 3 times per day
   workflow_dispatch:
 
 jobs:
@@ -10,35 +10,47 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      # Google Sheets
       GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
       GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
       GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
 
+      # AI APIs
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
+      # Facebook & Instagram
       FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
       FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
       IG_USER_ID: ${{ secrets.IG_USER_ID }}
 
+      # Shopify (for image CDN)
       SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
       SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
       SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+
+      # Pinterest (optional — skipped if not set)
+      PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+      PINTEREST_BOARD_ID: ${{ secrets.PINTEREST_BOARD_ID }}
+
+      # LinkedIn (optional — skipped if not set)
+      LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+      LINKEDIN_ORG_ID: ${{ secrets.LINKEDIN_ORG_ID }}
 
       NODE_TLS_REJECT_UNAUTHORIZED: 0
       UV_THREADPOOL_SIZE: 64
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Run Automation
+      - name: Run Multi-Channel Automation
         run: node src/index.js

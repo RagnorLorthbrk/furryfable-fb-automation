@@ -8,11 +8,13 @@ import { generateImage } from "./generateImage.js";
 import { postToFacebook, postToInstagram } from "./postToFacebook.js";
 import { getShopifyImageUrl } from "./shopifyUploader.js";
 import { getLatestBlog } from "./blogFetcher.js";
+import { postToPinterest, formatForPinterest } from "./postToPinterest.js";
+import { postToLinkedIn, formatForLinkedIn } from "./postToLinkedIn.js";
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function run() {
-  console.log("🚀 Starting FurryFable Automation");
+  console.log("🚀 Starting FurryFable Multi-Channel Automation");
 
   const history = await getSheetRows();
 
@@ -55,15 +57,13 @@ async function run() {
   }
 
   try {
-    console.log("--------------------------------------------------");
+    console.log("══════════════════════════════════════════");
     console.log(`📝 Creating post about: ${post.topic}`);
 
     const { imagePath, provider } = await generateImage(post);
 
-    // 🔥 Detect if this is blog-based post
     const isBlogPost = blog && post.caption.includes(blog.title);
 
-    // 🔥 Remove blog link from caption if present
     let cleanCaption = post.caption;
     if (blog) {
       cleanCaption = cleanCaption.replace(blog.link, "").trim();
@@ -73,9 +73,9 @@ async function run() {
 
     const publicUrl = await getShopifyImageUrl(imagePath);
 
-    // -----------------------
+    // ═══════════════════════════════════
     // FACEBOOK
-    // -----------------------
+    // ═══════════════════════════════════
     let fbPostId = null;
     let facebookStatus = "❌";
 
@@ -87,9 +87,9 @@ async function run() {
       console.error("❌ Facebook Post Failed:", err.message);
     }
 
-    // -----------------------
+    // ═══════════════════════════════════
     // INSTAGRAM
-    // -----------------------
+    // ═══════════════════════════════════
     let igId = null;
     let instagramStatus = "❌";
 
@@ -107,9 +107,43 @@ async function run() {
       }
     }
 
-    // -----------------------
+    // ═══════════════════════════════════
+    // PINTEREST
+    // ═══════════════════════════════════
+    let pinterestStatus = "⏭️";
+
+    if (publicUrl && process.env.PINTEREST_ACCESS_TOKEN) {
+      try {
+        const blogLink = isBlogPost && blog ? blog.link : "https://www.furryfable.com";
+        const pinData = formatForPinterest(post, blogLink);
+        const pinId = await postToPinterest(pinData.title, pinData.description, publicUrl, pinData.link);
+        pinterestStatus = pinId ? "✅" : "❌";
+      } catch (err) {
+        console.error("❌ Pinterest Error:", err.message);
+        pinterestStatus = "❌";
+      }
+    }
+
+    // ═══════════════════════════════════
+    // LINKEDIN
+    // ═══════════════════════════════════
+    let linkedinStatus = "⏭️";
+
+    if (process.env.LINKEDIN_ACCESS_TOKEN) {
+      try {
+        const blogLink = isBlogPost && blog ? blog.link : null;
+        const linkedInText = formatForLinkedIn(post, blogLink);
+        const liPostId = await postToLinkedIn(linkedInText, publicUrl);
+        linkedinStatus = liPostId ? "✅" : "❌";
+      } catch (err) {
+        console.error("❌ LinkedIn Error:", err.message);
+        linkedinStatus = "❌";
+      }
+    }
+
+    // ═══════════════════════════════════
     // FIRST COMMENT (Blog Link if Blog Post)
-    // -----------------------
+    // ═══════════════════════════════════
     let firstComment = post.engagementComment;
 
     if (isBlogPost && blog) {
@@ -146,9 +180,9 @@ async function run() {
       }
     }
 
-    // -----------------------
-    // LOG TO SHEET
-    // -----------------------
+    // ═══════════════════════════════════
+    // LOG TO SHEET (Extended with new channels)
+    // ═══════════════════════════════════
     await appendRow({
       date: new Date().toISOString(),
       topic: post.topic,
@@ -164,16 +198,19 @@ async function run() {
       fbPostId,
       similarityScore: 0,
       facebookStatus,
-      instagramStatus
+      instagramStatus,
+      pinterestStatus,
+      linkedinStatus
     });
 
     console.log("📊 Logged to Google Sheets");
+    console.log(`📈 Channels: FB=${facebookStatus} IG=${instagramStatus} PIN=${pinterestStatus} LI=${linkedinStatus}`);
 
   } catch (err) {
     console.error("❌ Error during post creation:", err.message);
   }
 
-  console.log("🎉 Automation completed.");
+  console.log("🎉 Multi-channel automation completed.");
 }
 
 run().catch(err => {
