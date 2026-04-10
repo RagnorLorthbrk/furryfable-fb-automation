@@ -16,7 +16,7 @@ export async function getSheetRows() {
   const sheets = google.sheets({ version: "v4", auth });
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A2:Q1000`,
+    range: `${SHEET_NAME}!A2:S1000`,
   });
   return response.data.values || [];
 }
@@ -46,12 +46,14 @@ export async function appendRow(rowData) {
     rowData.facebookStatus || "",            // N
     rowData.instagramStatus || "",           // O
     rowData.pinterestStatus || "",           // P
-    rowData.linkedinStatus || "",            // Q
+    rowData.quoraStatus || "",              // Q
+    rowData.quoraQuestion || "",            // R
+    rowData.quoraAnswer || "",              // S
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: `${SHEET_NAME}!A:Q`,
+    range: `${SHEET_NAME}!A:S`,
     valueInputOption: "USER_ENTERED",
     resource: { values: [row] },
   });

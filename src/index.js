@@ -9,7 +9,7 @@ import { postToFacebook, postToInstagram } from "./postToFacebook.js";
 import { getShopifyImageUrl } from "./shopifyUploader.js";
 import { getLatestBlog } from "./blogFetcher.js";
 import { postToPinterest, formatForPinterest } from "./postToPinterest.js";
-import { postToLinkedIn, formatForLinkedIn } from "./postToLinkedIn.js";
+import { runQuoraEngine } from "./postToQuora.js";
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -125,20 +125,18 @@ async function run() {
     }
 
     // ═══════════════════════════════════
-    // LINKEDIN
+    // QUORA ANSWERS
     // ═══════════════════════════════════
-    let linkedinStatus = "⏭️";
+    let quoraStatus = "⏭️";
+    let quoraAnswers = [];
 
-    if (process.env.LINKEDIN_ACCESS_TOKEN) {
-      try {
-        const blogLink = isBlogPost && blog ? blog.link : null;
-        const linkedInText = formatForLinkedIn(post, blogLink);
-        const liPostId = await postToLinkedIn(linkedInText, publicUrl);
-        linkedinStatus = liPostId ? "✅" : "❌";
-      } catch (err) {
-        console.error("❌ LinkedIn Error:", err.message);
-        linkedinStatus = "❌";
-      }
+    try {
+      quoraAnswers = await runQuoraEngine(history, blog);
+      quoraStatus = quoraAnswers.length > 0 ? "✅" : "❌";
+      console.log(`🔍 Quora: ${quoraAnswers.length} answers generated`);
+    } catch (err) {
+      console.error("❌ Quora Error:", err.message);
+      quoraStatus = "❌";
     }
 
     // ═══════════════════════════════════
@@ -200,11 +198,13 @@ async function run() {
       facebookStatus,
       instagramStatus,
       pinterestStatus,
-      linkedinStatus
+      quoraStatus,
+      quoraQuestion: quoraAnswers[0]?.question || "",
+      quoraAnswer: quoraAnswers[0]?.answer || ""
     });
 
     console.log("📊 Logged to Google Sheets");
-    console.log(`📈 Channels: FB=${facebookStatus} IG=${instagramStatus} PIN=${pinterestStatus} LI=${linkedinStatus}`);
+    console.log(`📈 Channels: FB=${facebookStatus} IG=${instagramStatus} PIN=${pinterestStatus} QUORA=${quoraStatus}`);
 
   } catch (err) {
     console.error("❌ Error during post creation:", err.message);

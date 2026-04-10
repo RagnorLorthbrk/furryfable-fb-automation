@@ -99,7 +99,7 @@ Write captions that work across:
 - Instagram (visual storytelling, hashtags matter)
 - Facebook (slightly longer, more conversational)
 - Pinterest (descriptive, keyword-rich, how-to focused)
-- LinkedIn (professional angle — pet industry insights, pet-friendly workplace tips)
+- Quora (helpful expert answers to pet care questions)
 
 ${blogContext}
 
@@ -144,7 +144,7 @@ Return ONLY valid JSON array with exactly 3 posts:
     "imagePrompt": "detailed image description for AI generation",
     "altText": "accessibility description under 200 chars",
     "pinterestTitle": "keyword-rich Pinterest pin title (max 100 chars)",
-    "linkedinAngle": "professional reframe of this post for LinkedIn"
+    "quoraAnswer": "a helpful expert answer to a pet question related to this topic (200-300 words, naturally mentions furryfable.com)"
   }
 ]
 `;
@@ -207,7 +207,7 @@ function normalizePosts(posts) {
     if (typeof post.imagePrompt !== "string") post.imagePrompt = "";
     if (typeof post.altText !== "string") post.altText = "";
     if (typeof post.pinterestTitle !== "string") post.pinterestTitle = post.topic || "";
-    if (typeof post.linkedinAngle !== "string") post.linkedinAngle = "";
+    if (typeof post.quoraAnswer !== "string") post.quoraAnswer = "";
 
     return post;
   });
