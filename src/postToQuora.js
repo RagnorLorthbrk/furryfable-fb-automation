@@ -15,26 +15,40 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 
 const PET_QUESTION_SEEDS = [
+  // Harness & Leash (our top category)
+  "best no pull harness for dogs that pull",
   "how to stop dog from pulling on leash",
-  "best way to groom a cat at home",
-  "why does my dog chew everything",
-  "how to keep pets cool in summer",
-  "best collar for small dogs",
-  "how to reduce dog shedding",
+  "best retractable leash for small dogs",
+  "how to measure dog for harness",
+  "reflective dog leash for night walks",
+  // Pet Toys (high engagement)
+  "best interactive toys for cats home alone",
+  "indestructible chew toys for aggressive chewers",
+  "best puzzle toys to keep dogs busy",
+  "how to keep indoor cat entertained",
+  "automatic ball launcher for dogs worth it",
+  // Water Bottles & Feeders
+  "best portable water bottle for dogs on walks",
+  "automatic pet feeder for cats reviews",
+  "how to keep dog hydrated on road trips",
+  // Pet Apparel
+  "does my dog need a winter coat",
+  "best dog anxiety vest does it work",
+  "how to measure dog for winter jacket",
+  // Outdoor & Travel
+  "best dog car seat cover for back seat",
+  "how to travel with dog in car safely",
+  "dog backpack carrier for hiking",
+  // Safety
+  "airtag collar for dogs tracking",
+  "best way to keep track of outdoor cat",
+  // Cat specific
+  "best scratching post to save furniture",
+  "cat litter mat that actually works",
   "why does my cat scratch furniture",
-  "how to train a puppy to walk on leash",
-  "best pet accessories for travel",
-  "how to calm an anxious dog",
-  "what to look for in a dog harness",
-  "how to introduce a new cat to your home",
-  "best grooming tools for long hair dogs",
-  "how to keep a dog entertained indoors",
-  "why does my dog bark at everything",
-  "best pet care routine for beginners",
-  "how to choose the right pet bed",
-  "tips for walking dog in winter",
-  "how to make homemade dog treats",
-  "best ways to bond with your pet",
+  // Training
+  "how to crate train anxious puppy",
+  "best dog muzzle that lets dog drink",
 ];
 
 /**

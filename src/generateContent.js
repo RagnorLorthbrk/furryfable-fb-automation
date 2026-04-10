@@ -49,6 +49,23 @@ ${seasonContext}
 Today is ${dayOfWeek}.
 
 ═══════════════════════════════════════
+PRODUCT CATALOG (Reference these in posts naturally)
+═══════════════════════════════════════
+Our Collections:
+- Pet Toys: interactive cat balls, puzzle toys, chew toys, cat scratching posts, automatic ball launchers, LED mouse toys, frisbees
+- Water Bottles & Feeders: portable travel dispensers, gravity feeders, kennel water bottles, smart auto feeders
+- Pet Apparel: dog hoodies, winter jackets, summer outfits, sweaters, costumes
+- Harness & Leash: no-pull mesh harness, retractable leashes, reflective leashes, velvet collar sets, car seat belts
+- Outdoor: dog car seat covers, dog backpacks, pooper scooper kits
+- Safety: AirTag pet collars, health monitoring pee pads
+- Training: dog muzzles, agility equipment, anxiety calming vests
+- Cat: cat towers, scratching boards, interactive teaser toys, electric fish toys, litter mats
+
+IMPORTANT: At least 1 of the 3 posts should subtly feature or reference a product type we sell.
+Never be salesy — show the product solving a real problem.
+Example: "This one change to our walk routine fixed everything → switching to a no-pull harness."
+
+═══════════════════════════════════════
 BRAND VOICE & PERSONALITY
 ═══════════════════════════════════════
 - Warm, intelligent, trustworthy
@@ -108,19 +125,19 @@ ${recentTopics}
 
 CRITICAL: Do NOT repeat any recent topic. Each post must be unique.
 
-Topic Categories (rotate through these):
-1. Pet-owner bonding moments
-2. Training tips & tricks
-3. Mental enrichment & puzzle toys
-4. Seasonal care (match current season)
-5. Behavior decoded (why pets do X)
-6. Surprising pet facts
-7. Lifestyle & travel with pets
-8. Safety tips & warnings
-9. Emotional storytelling (adoption, rescue, milestones)
-10. Light nutrition (non-medical)
-11. Product use cases (subtle — how a harness improved walks)
-12. Community spotlights (ask followers to share)
+Topic Categories (rotate through — prioritize product-adjacent):
+1. Product use cases (how a harness improved walks, puzzle toy mental stimulation) — HIGHEST PRIORITY
+2. Problem → solution content (dog pulls on walks → no-pull harness, cat scratches furniture → scratching post)
+3. Training tips that reference our gear
+4. Seasonal product spotlights (spring walk essentials, summer cooling gear)
+5. Pet-owner bonding moments (with product context)
+6. Mental enrichment & puzzle toys showcase
+7. Travel with pets (car seat covers, portable water bottles, backpacks)
+8. Safety tips (AirTag collars, reflective leashes at night)
+9. Behavior decoded (why pets do X — link to solution we sell)
+10. Community spotlights (ask followers to share their pet gear)
+11. Before/after stories (anxious dog → calming vest transformation)
+12. New pet parent essentials checklist
 
 Hard Restrictions:
 - No fake statistics or invented data
