@@ -9,7 +9,6 @@ import { postToFacebook, postToInstagram } from "./postToFacebook.js";
 import { getShopifyImageUrl } from "./shopifyUploader.js";
 import { getLatestBlog } from "./blogFetcher.js";
 import { postToPinterest, formatForPinterest } from "./postToPinterest.js";
-import { runQuoraEngine } from "./postToQuora.js";
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -125,21 +124,6 @@ async function run() {
     }
 
     // ═══════════════════════════════════
-    // QUORA ANSWERS
-    // ═══════════════════════════════════
-    let quoraStatus = "⏭️";
-    let quoraAnswers = [];
-
-    try {
-      quoraAnswers = await runQuoraEngine(history, blog);
-      quoraStatus = quoraAnswers.length > 0 ? "✅" : "❌";
-      console.log(`🔍 Quora: ${quoraAnswers.length} answers generated`);
-    } catch (err) {
-      console.error("❌ Quora Error:", err.message);
-      quoraStatus = "❌";
-    }
-
-    // ═══════════════════════════════════
     // FIRST COMMENT (Blog Link if Blog Post)
     // ═══════════════════════════════════
     let firstComment = post.engagementComment;
@@ -197,14 +181,11 @@ async function run() {
       similarityScore: 0,
       facebookStatus,
       instagramStatus,
-      pinterestStatus,
-      quoraStatus,
-      quoraQuestion: quoraAnswers[0]?.question || "",
-      quoraAnswer: quoraAnswers[0]?.answer || ""
+      pinterestStatus
     });
 
     console.log("📊 Logged to Google Sheets");
-    console.log(`📈 Channels: FB=${facebookStatus} IG=${instagramStatus} PIN=${pinterestStatus} QUORA=${quoraStatus}`);
+    console.log(`📈 Channels: FB=${facebookStatus} IG=${instagramStatus} PIN=${pinterestStatus}`);
 
   } catch (err) {
     console.error("❌ Error during post creation:", err.message);
