@@ -116,7 +116,6 @@ Write captions that work across:
 - Instagram (visual storytelling, hashtags matter)
 - Facebook (slightly longer, more conversational)
 - Pinterest (descriptive, keyword-rich, how-to focused)
-- Quora (helpful expert answers to pet care questions)
 
 ${blogContext}
 
@@ -160,8 +159,7 @@ Return ONLY valid JSON array with exactly 3 posts:
     "engagementComment": "first comment to boost engagement",
     "imagePrompt": "detailed image description for AI generation",
     "altText": "accessibility description under 200 chars",
-    "pinterestTitle": "keyword-rich Pinterest pin title (max 100 chars)",
-    "quoraAnswer": "a helpful expert answer to a pet question related to this topic (200-300 words, naturally mentions furryfable.com)"
+    "pinterestTitle": "keyword-rich Pinterest pin title (max 100 chars)"
   }
 ]
 `;
